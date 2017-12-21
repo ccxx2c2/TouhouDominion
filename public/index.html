@@ -1,0 +1,79 @@
+<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Touhou Dominion</title>
+    <link rel="stylesheet" href="bootstrap.css">
+    <style type="text/css">
+        body{margin-top:60px;}
+        .container{display:table;height:100%;}
+        .announce{text-align:center; color:#ccc; width:100%; display:block;}
+        .username{}
+        #panel {border:2px solid #ccc;padding:16px;border-radius: 5px; position:relative;
+        height:450px;}
+        #menubar{top:5%;left:20%;position:absolute;}
+        #sidebar {border:2px solid #ccc;padding:5px;border-radius: 5px;overflow-y:auto;height:430px;}
+        #room {font-weight:bold;}
+        #room_layout {position:fixed;border:5px solid #000;padding:16px;border-radius:25px;top :3%;left:3%;bottom:3%;right:3%;background-color:#ec2;height:95%;}
+        .leftbar {width:12%;float:left;}
+        .mainview {width:68%;float:left;}
+        .rep {width:20%;float:left;background-color:#000;color:#fff;}
+        #supply{top:3%;left:12%}
+        .basicCard{width:50%;float:left;border:transparent 3px solid;}
+        .cardsFront{position:relative;}
+        .cards{padding-left:0px;padding-right:0px;border:transparent 3px solid;}
+        .count{background-color:red;color:#fff;float:left;border:1px solid #000;position:absolute;z-index:2;}
+        .npc{border:2px solid #ccc;vertical-align:center;position:absolute;background-color:#000;width:7%;right:0%}
+        .name,.victoryPoint{color:#fff;}
+        .CardInHand{width:10%;padding-left:0.5%;padding-right:0.5%;bottom:5%}
+        #cardInHand{text-align:center; position:absolute; bottom:2%; width:68%;}
+        #cardMount{position:absolute;bottom:2%;}
+        #drops{position:absolute;bottom:2%;}
+        #cardInAction{position:relative;}
+        .cardActive{border:red 3px solid;}
+	</style>
+</head>
+<body>
+    <div id="login_instance">
+        <div id="loginModal" class="modal fade" data-backdrop="static" tabindex="-1" role="dialog" v-if="status==='login'">
+          <div class="modal-dialog" role="document">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h4 class="modal-title">登录界面</h4>
+              </div>
+              <div class="modal-body">
+                <div class="alert alert-success" role="alert" style="display: none;"></div>
+                <div class="alert alert-danger" role="alert" style="display: none;"></div>
+                <div class="form-group">
+                  <input type="text" class="form-control" id="username" placeholder="用户名" maxlength="14" />
+                </div>
+                <div class="form-group">
+                  <input type="password" class="form-control" id="password" placeholder="密码" maxlength="14" />
+                </div>
+                <div class="form-group">
+                  <select class="form-control" id="roomnumber">
+                    <option value="" disabled selected>房间..</option>
+                    <option value="0">0</option>
+                    <option value="1">1</option>
+                    <option value="2">2</option>
+                  </select>
+                </div>
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-primary" onclick="login()">登入</button>
+                <button type="button" class="btn btn-default" onclick="register()">注册</button>
+              </div>
+            </div><!-- /.modal-content -->
+          </div><!-- /.modal-dialog -->
+        </div><!-- /.modal -->
+    </div>
+
+
+    <script src="jquery.js"></script>
+    <script src="bootstrap.js"></script>
+    <script src="vue.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="data.js"></script>
+    <script src="index.js"></script>
+</body>
+</html>

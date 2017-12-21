@@ -1,0 +1,57 @@
+<div class="container" id="room_vue_instance">
+    <div class="alert alert-danger" role="alert" style="display: none;"></div>
+
+    <section class="col-sm-10">
+        <div id="panel">
+            <div id="menubar">
+                <p> 指定额外卡组：<button type="button" class="btn btn-primary" onclick="exCard(0)">5元10分</button> 天气 船 城 璋 魔法使 ...<br />指定起始手牌：7钱3分 7钱3地灵 4钱3飞碟3分<br />指定起始卡包：红 妖 永 Ex 风 地<br />Supply张数<input v-model=lim type=text size=4 maxlength=2></input></p>
+
+                <br>
+                <div class="row">
+                    <template v-for="(card,index) in cards">
+                        <img class="cards img-responsive col-xs-2 col-sm-2 col-md-2 col-lg-2"
+                        data-container="body" data-toggle="popover"
+                        :data-placement="(index/5>=1)?'bottom':'top'"
+                        data-trigger='hover' :data-original-title="title(card)"
+                         data-html="true" :data-content="description(card).split('\n').join('<br>')"
+                         :src="filename(card)" :alt="name(card)" @click="change(index)"/>
+                        <div v-if="index%5===4" class="clearfix visible-xs-block visible-sm-block visible-md-block visible-lg-block"></div>
+                    </template>
+                </div>
+                <br />
+                <button type="button" class="btn btn-success" @click="generate(lim)" >生成</button>
+                <button type="button" class="btn btn-warning" @click="generateAvailable(lim)">重置</button>
+                <button type="button" class="btn btn-primary" id="readybutton" onclick="ready()">准备</button>
+            </div>
+        </div>
+    </section>
+    <aside class="col-sm-2">
+    <div><span id="room"></span><button type="button" class="btn btn-default" data-toggle="modal" data-target="#changeRoomModal">切换</button></div>
+        <div id="sidebar">
+        </div>
+
+    </aside>
+    <div id="changeRoomModal" class="modal fade" tabindex="-1" role="dialog">
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <div class="modal-header"><button type="button" class="close" data-dismiss="modal" aria-label="Close"></button>
+            <h4 class="modal-title">切换到...</h4>
+          </div>
+          <div class="modal-body">
+            <div class="form-group">
+              <select class="form-control" id="targetRoom">
+                <option value="" disabled selected>目标房间..</option>
+                <option value="0">0</option>
+                <option value="1">1</option>
+                <option value="2">2</option>
+              </select>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-default" data-dismiss="modal">关闭</button>
+            <button type="button" class="btn btn-primary" onclick="changeRoom()">确定</button>
+          </div>
+        </div><!-- /.modal-content -->
+      </div><!-- /.modal-dialog -->
+    </div><!-- /.modal -->
+</div>

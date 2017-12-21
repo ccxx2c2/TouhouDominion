@@ -1,0 +1,98 @@
+<div class="container" id="room_instance">
+    <div id="modal_instance">
+        <div id="ynModal" class="modal fade" tabindex="-1" role="dialog" >
+          <div class="modal-dialog" role="document">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h4 class="modal-title">{{modal_title}}</h4>
+              </div>
+              <div class="modal-body">
+                {{modal_content}}
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-primary" onclick="socket.emit('sending yn','y'),$('#ynModal').modal('hide')">是</button>
+                <button type="button" class="btn btn-default" onclick="socket.emit('sending yn','n'),$('#ynModal').modal('hide')">否</button>
+              </div>
+            </div><!-- /.modal-content -->
+          </div><!-- /.modal-dialog -->
+        </div><!-- /.modal -->
+    </div>
+    <div id="room_layout">
+      <section class="leftbar">
+          <template v-for="(card,index) in basicCards">
+              <div class="cardsFront">
+                  <span class="count" :style="'left:'+index%2*50+'%'">
+                    {{basicCardsAmount[index]}}
+                  </span>
+                  <img :class="'basicCard '+((card.cost<=nowMoney) &&
+                  (nowPlayer == username) && (nowStage == 'Buy') && (nowBuy > 0)
+                   && basicCardsAmount[index]>0?'cardActive':'')"
+                   :src="filename(card)" :alt="name(card)" @click="buy(index,'basic')"/>
+              </div>
+              <div v-if="index%2===1" class="clearfix visible-block"></div>
+          </template>
+          <div id="cardMount">
+              <p>手牌:{{nowCard}} 行动:{{nowAction}}</p>
+              <p>金钱:{{nowMoney}} 购买:{{nowBuy}}</p>
+              <p>牌堆:{{myCard.length}}
+          </div>
+      </section>
+      <section class="mainview">
+          <div id="panel">
+              <div id="supply">
+                  <div class="row">
+                      <template v-for="(card,index) in cards">
+                          <div class="cardsFront">
+                              <span class="count" :style="'left:'+index%5*16.67+'%'">
+                                {{cardsAmount[index]}}
+                              </span>
+                              <img :class="'cards img-responsive col-xs-2 col-sm-2 col-md-2 col-lg-2 '
+                              + ((card.cost<=nowMoney) && (nowPlayer == username)
+                              && (nowStage == 'Buy')&& (nowBuy > 0) &&
+                              cardsAmount[index]>0?'cardActive':'') "
+                              data-container="body" data-toggle="popover" data-placement="bottom"
+                              data-trigger='hover' :data-original-title="title(card)"
+                              data-html="true" :data-content="description(card).split('\n').join('<br>')"
+                              :src="filename(card)" :alt="name(card)" @click="buy(index,'supply')"/>
+                          </div>
+                          <div v-if="index%5===4" class="clearfix visible-xs-block
+                          visible-sm-block visible-md-block visible-lg-block">
+
+                          </div>
+                      </template>
+                  </div>
+              </div>
+              <div id="others">
+                  <template v-for="(name,index) in otherName">
+                      <div class="npc" :style="'top:'+(index*otherIndex+5)+'%'">
+                          <span class="name">{{name}}</span><br />
+                          <span class="victoryPoint">VP:{{otherPoint[index]}}</span>
+                      </div>
+                  </template>
+              </div>
+          </div>
+          <div id="cardInAction">
+              <template v-for="(card,index) in cardInAction">
+                      <img class="CardInHand" :src="filename(card)" :alt="name(card)"/>
+                  </template>
+          </div>
+          <div id="cardInHand">
+              <template v-for="(card,index) in myCardInHand">
+                      <img class="CardInHand" :src="filename(card)" :alt="name(card)" @click="use(index)"/>
+                  </template>
+          </div>
+      </section>
+      <aside class="rep">
+
+          <div id="sidebar">
+              <p>记录一览：</p>
+          </div>
+       <div><button type="button" :class="'btn btn-default ' + (nowPlayer == username?'':'disabled')"
+         @click="nextStage()">{{nowStage == 'Cleanup' ? '结束回合' : '下一阶段'}}</button></div>
+          <div id="drops">
+              <p>胜利点:{{myPoint}}</p>
+              <p>弃牌堆:{{myDrop.length}}</p>
+          </div>
+      </aside>
+  </div>
+</div>

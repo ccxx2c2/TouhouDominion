@@ -1,0 +1,18 @@
+{
+  "name": "TouhouDominion",
+  "version": "0.0.1",
+  "description": "an online board game",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.14.0",
+    "socket.io": "^2.0.4",
+    "bootstrap": "^3.3.7",
+    "jQuery": "^1.12.4",
+    "Vue.js": "^2.3.4"
+  }
+}

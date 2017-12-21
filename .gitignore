@@ -1,0 +1,13 @@
+*.log
+node_modules/
+olded/
+private/users.js
+public/fonts/
+public/pic/
+public/bootstrap.css
+public/bootstrap.js
+public/bootstrap.min.css.map
+public/jquery.js
+public/socket.io.js
+public/socket.io.slim.js
+public/vue.js
