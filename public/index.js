@@ -185,15 +185,17 @@ function regVue(val){
    }
    if(val == 2){
        app3.$mount("#room_instance");
-       if($(window).height() < 600 || $(window).width() < 800){
-           $("#panel").css("height","230px")
+       if($(window).height() < 550 || $(window).width() < 750){
+           $("#panel")//.css("height","230px")
            .css("width","480px")
-           .css("top","-15px")
-           .css("padding-top","5px");
+           .css("top","-15px");
            $("#sidebar").css("height","180px");
            app3.otherIndex = 20;
            $("#ynModal").modal("hide");
        }
+    /*   else if ($(window).height() < 800){
+
+    }*/
    }
 }
 
@@ -399,10 +401,16 @@ socket.on('statusUpdate', (data) =>{
     app3.nowPlayer = data.nowPlayer == undefined ? app3.nowPlayer : data.nowPlayer;
     app3.nowStage = data.nowStage == undefined ? app3.nowStage : data.nowStage;
     app3.myDrop = data.drops || app3.myDrop;
+
+    if(data.buyed){
+        addMessage(app3.nowPlayer + '购买了' + data.buyed,'rep');
+    }
     if(data.usingCard){
         app3.cardInAction.push(data.usingCard);
         addMessage(app3.nowPlayer + '使用了' + data.usingCard.chname,'rep');
+
     }
+
     if(data.nowVp){
         if(app3.nowPlayer == username){
             app3.myPoint = data.nowVp;
@@ -417,28 +425,43 @@ socket.on('statusUpdate', (data) =>{
             addMessage('第'+data.nowTurn+'回合，'+app3.nowPlayer+'的回合','rep');
         }
         addMessage('　'+app3.nowStage+'阶段','rep');
-        if(data.nowStage == 'Action'){
-            if(app3.nowPlayer == username){
-                action = 0;
-                for(cardkey in app3.myCardInHand){
-                    if(app3.myCardInHand[cardkey].type == "行动") {action++;break;}
-                }
-                if(action == 0){
-                    app3.nextStage();
-                    return;
-                }
+    }
+    if(app3.nowPlayer == username){
+        if(app3.nowStage == 'Action' && !data.aCardUsing){
+            if(app3.nowAction == 0){
+                app3.nextStage();
+                return;
+            }
+            action = 0;
+            for(cardkey in app3.myCardInHand){
+                if(app3.myCardInHand[cardkey].type == "行动") {action++;}
+            }
+            if(action == 0 || action == 1 && data.usingCard.type == "行动"){
+                app3.nextStage();
+                return;
             }
         }
-        if(data.nowStage == 'Cleanup'){
-            app3.cardInAction = [];
-            if(app3.nowPlayer == username){
+        if(app3.nowStage == 'Buy'){
+            if(app3.nowBuy == 0){
+                app3.nextStage();
+                return;
+            }
+            resource = 0;
+            for(cardkey in app3.myCardInHand){
+                if(app3.myCardInHand[cardkey].type == "资源") {resource++;break;}
+            }
+            if(resource == 0 && app3.nowMoney == 0){
                 app3.nextStage();
                 return;
             }
         }
     }
-    if(data.buyed){
-        addMessage(app3.nowPlayer + '购买了' + data.buyed,'rep');
+    if(app3.nowStage == 'Cleanup'){
+        app3.cardInAction = [];
+        if(app3.nowPlayer == username){
+            app3.nextStage();
+            return;
+        }
     }
 });
 

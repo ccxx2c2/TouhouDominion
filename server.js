@@ -1,9 +1,13 @@
 var express = require('express');
 var app = express();
-var http = require('http').Server(app);
-var path = require('path');
-var io = require('socket.io')(http);
 var fs = require('fs');
+var privateKey  = fs.readFileSync('/root/private.pem', 'utf8');
+var certificate = fs.readFileSync('/root/file.crt', 'utf8');
+var credentials = {key: privateKey, cert: certificate};
+//var http = require('http').Server(app);
+var https = require('https').createServer(credentials, app);
+var path = require('path');
+var io = require('socket.io')(https);
 var cardData = require(__dirname+'/public/data.js');
 var userList = require(__dirname+'/private/users.js');
 var unlogUserList = Object.keys(userList);
@@ -48,12 +52,18 @@ function myread(path,i){
 myread('waiting.html',0);
 myread('battle.html',1);
 
-http.listen(80, function(){
-  console.log(new Date().toLocaleTimeString() + ' listening on *:80');
+//http.listen(80);
+https.listen(443, function(){
+  console.log(new Date().toLocaleTimeString() + ' listening on *:443');
 });
 
 app.use(express.static(path.join(__dirname,'public')));
-
+/*app.get('/', function(req, res) {
+  res.writeHead(301,{
+      'Location':'https://dominion.naide.me/index.html'
+  });
+  res.end();
+});*/
 var rooms = [];
 var stage = ['Action','Buy','Cleanup'];
 class Room{
@@ -419,7 +429,8 @@ io.on('connection',(socket) =>{
      */
     socket.on('verifyWaiting',(data) => {
         if(rooms[data.room.toString()]!=undefined
-        && rooms[data.room.toString()].isStart == true){
+        && rooms[data.room.toString()].isStart == true
+        && rooms[data.room.toString()].users.length > 0){
                 socket.emit('verified',{
                     valid: false,
                     errorcode: 1
@@ -496,6 +507,7 @@ io.on('connection',(socket) =>{
     });
 
     socket.on('generateCard',(data) => { // emit generateCard
+        if(!socket.logined) return;
         if(socket.username !== rooms[socket.room].host){
             return;
         }
@@ -512,6 +524,7 @@ io.on('connection',(socket) =>{
     });
 
     socket.on('ready',(prepared) => { //emit otherReady, startGame
+        if(!socket.logined) return;
 
         if(rooms[socket.room].users[socket.username].status == 'waiting')
             rooms[socket.room].users[socket.username].status = 'prepared';
@@ -540,10 +553,12 @@ io.on('connection',(socket) =>{
     });
 
     socket.on('getCard', () => {
+        if(!socket.logined) return;
         socket.emit('receive cards',rooms[socket.room].users[socket.username]);
     });
 
     socket.on('nextStage', ()=>{
+        if(!socket.logined) return;
         room = rooms[socket.room];
         usr = room.users[socket.username];
         if(socket.username != room.nowPlayer) return;
@@ -595,6 +610,7 @@ io.on('connection',(socket) =>{
     });
 
     socket.on('useCard',async (index)=>{
+        if(!socket.logined) return;
         room = rooms[socket.room];
         if(socket.username != rooms[socket.room].nowPlayer
         || rooms[socket.room].users[socket.username].cardsInHand[index] == undefined) return;
@@ -634,6 +650,7 @@ io.on('connection',(socket) =>{
     });
 
     socket.on('buyCard',(index) =>{
+        if(!socket.logined) return;
         room = rooms[socket.room];
         usr = room.users[socket.username];
         if(socket.username != room.nowPlayer) return;

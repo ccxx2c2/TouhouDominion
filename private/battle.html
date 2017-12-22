@@ -71,24 +71,27 @@
                   </template>
               </div>
           </div>
-          <div id="cardInAction">
+          <div id="cardInAction" >
               <template v-for="(card,index) in cardInAction">
-                      <img class="CardInHand" :src="filename(card)" :alt="name(card)"/>
+                      <img class="CardInAction" :src="filename(card)" :alt="name(card)"
+                      :style="'width: ' + cardInAction.length > 13 ? '5%' : cardInAction.length > 10 ? '8%' : '10%' "/>
                   </template>
           </div>
           <div id="cardInHand">
               <template v-for="(card,index) in myCardInHand">
-                      <img class="CardInHand" :src="filename(card)" :alt="name(card)" @click="use(index)"/>
+                      <img class="CardInHand" :src="filename(card)" :alt="name(card)" @click="use(index)"
+                       :style="'width: ' + myCardInHand.length > 13 ? '5%' : myCardInHand.length > 10 ? '8%' : '10%' "/>
                   </template>
           </div>
       </section>
       <aside class="rep">
-
+        <div id="rep_layout">
           <div id="sidebar">
               <p>记录一览：</p>
           </div>
        <div><button type="button" :class="'btn btn-default ' + (nowPlayer == username?'':'disabled')"
          @click="nextStage()">{{nowStage == 'Cleanup' ? '结束回合' : '下一阶段'}}</button></div>
+        </div>
           <div id="drops">
               <p>胜利点:{{myPoint}}</p>
               <p>弃牌堆:{{myDrop.length}}</p>
