@@ -122,7 +122,7 @@ var app3 = new Vue({
         language:0,
         binded:0,
         username:username,
-        myCard:[],
+        myCardLength:0,
         myCardInHand:[],
         myDrop:[],
         myPoint:0,
@@ -141,6 +141,10 @@ var app3 = new Vue({
         otherIndex:10,
         modal_title:'',
         modal_content:'',
+        modal_amount:0,
+        modal_cards:[],
+        aCardUsing:false,
+        modal_from:'',
     },
     created:function(){
     },
@@ -160,8 +164,22 @@ var app3 = new Vue({
             this.binded=$(".cards").length;
         },
         use:(index)=>{
-            if(app3.nowPlayer == username)
-                socket.emit('useCard',index);
+            if(!app3.nowPlayer == username){
+              return;
+            }
+            if(app3.aCardUsing && (app3.modal_from == 'cardsInHand')){
+                if(!app3.myCardInHand[index].chosen){
+                  app3.modal_cards.push(index);
+                  app3.myCardInHand[index].chosen = true;
+              }
+              else{
+                  app3.modal_cards.splice(app3.modal_cards.indexOf(index),1);
+                  app3.myCardInHand[index].chosen = false;
+              }
+            }
+            else{
+              socket.emit('useCard',index);
+            }
         },
         buy:(index,src) =>{
             if(src == 'basic') index += $(".cards").length;
@@ -171,6 +189,20 @@ var app3 = new Vue({
         nextStage: ()=>{
             if(app3.nowPlayer == username)
                 socket.emit('nextStage');
+        },
+        sendyn: (select)=>{
+          socket.emit('sending yn',select);
+          $('#ynModal').css('display','none');
+          $('.backdrop').css('display','none');
+        },
+        sendCards: ()=>{
+          socket.emit('sending cards',app3.modal_cards);
+          $('#cardsModal').css('display','none');
+          $('.backdrop').css('display','none');
+          app3.modal_cards.forEach( (i) => {
+            app3.myCardInHand[i].chosen = false;
+          });
+          app3.modal_cards = [];
         },
         log:console.log
     },
@@ -392,15 +424,17 @@ socket.on('statusUpdate', (data) =>{
         app3.myPoint = data.userPoint[0];
         data.userPoint.splice(0,1);
     }
-    app3.otherName = data.usersName || app3.otherName;
-    app3.otherPoint = data.userPoint || app3.otherPoint;
+    app3.otherName = data.usersName == undefined ? app3.otherName : data.usersName;
+    app3.otherPoint = data.userPoint == undefined ? app3.otherPoint : data.userPoint;
     app3.nowAction = data.nowAction == undefined ? app3.nowAction : data.nowAction;
     app3.nowCard = data.nowCard == undefined ? app3.nowCard : data.nowCard;
     app3.nowMoney = data.nowMoney == undefined ? app3.nowMoney : data.nowMoney;
     app3.nowBuy = data.nowBuy == undefined ? app3.nowBuy : data.nowBuy;
     app3.nowPlayer = data.nowPlayer == undefined ? app3.nowPlayer : data.nowPlayer;
     app3.nowStage = data.nowStage == undefined ? app3.nowStage : data.nowStage;
-    app3.myDrop = data.drops || app3.myDrop;
+    app3.myDrop = data.drops == undefined ? app3.myDrop : data.drops;
+    app3.myCardInHand = data.cardsInHand == undefined ? app3.myCardInHand : data.cardsInHand ;
+    app3.myCardLength = data.cardsLength == undefined ? app3.myCardLength : data.cardsLength ;
 
     if(data.buyed){
         addMessage(app3.nowPlayer + '购买了' + data.buyed,'rep');
@@ -408,8 +442,8 @@ socket.on('statusUpdate', (data) =>{
     if(data.usingCard){
         app3.cardInAction.push(data.usingCard);
         addMessage(app3.nowPlayer + '使用了' + data.usingCard.chname,'rep');
-
     }
+    if(data.aCardUsing != undefined) app3.aCardUsing = data.aCardUsing;
 
     if(data.nowVp){
         if(app3.nowPlayer == username){
@@ -419,7 +453,6 @@ socket.on('statusUpdate', (data) =>{
             app3.otherPoint[app3.otherName.indexOf(app3.nowPlayer)] = data.nowVp;
         }
     }
-    socket.emit('getCard');
     if(data.nowStage){
         if(data.nowStage == 'Action'){
             addMessage('第'+data.nowTurn+'回合，'+app3.nowPlayer+'的回合','rep');
@@ -427,7 +460,7 @@ socket.on('statusUpdate', (data) =>{
         addMessage('　'+app3.nowStage+'阶段','rep');
     }
     if(app3.nowPlayer == username){
-        if(app3.nowStage == 'Action' && !data.aCardUsing){
+        if(app3.nowStage == 'Action' && !app3.aCardUsing){
             if(app3.nowAction == 0){
                 app3.nextStage();
                 return;
@@ -436,7 +469,7 @@ socket.on('statusUpdate', (data) =>{
             for(cardkey in app3.myCardInHand){
                 if(app3.myCardInHand[cardkey].type == "行动") {action++;}
             }
-            if(action == 0 || action == 1 && data.usingCard.type == "行动"){
+            if(action == 0){
                 app3.nextStage();
                 return;
             }
@@ -446,14 +479,14 @@ socket.on('statusUpdate', (data) =>{
                 app3.nextStage();
                 return;
             }
-            resource = 0;
+          /*  resource = 0;
             for(cardkey in app3.myCardInHand){
                 if(app3.myCardInHand[cardkey].type == "资源") {resource++;break;}
             }
             if(resource == 0 && app3.nowMoney == 0){
                 app3.nextStage();
                 return;
-            }
+            }*/
         }
     }
     if(app3.nowStage == 'Cleanup'){
@@ -465,17 +498,26 @@ socket.on('statusUpdate', (data) =>{
     }
 });
 
-socket.on('receive cards', (data) =>{
-    app3.myCardInHand = data.cardsInHand;
-    app3.myCard = data.cards;
-});
 
 socket.on('askyn', (data) =>{
    app3.modal_title = data.title;
    app3.modal_content = data.content;
-   $("#ynModal").modal("show");
+   $('#ynModal').css('display','');
+   $('.backdrop').css('display','');
 });
 
+socket.on('askCards', (data) =>{
+   app3.modal_title = data.title;
+   app3.modal_content = data.content;
+   app3.modal_amount = data.amount;
+   app3.modal_from = data.from;
+   $('#cardsModal').css('display','');
+   $('.backdrop').css('display','');
+});
+
+socket.on('sendRep', (content) => {
+  addMessage(content,'rep');
+});
 socket.on('end game',() => {
     console.log('end game');
     var wined = true;

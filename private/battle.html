@@ -1,21 +1,30 @@
+<div class="backdrop" style="display:none"></div>
 <div class="container" id="room_instance">
     <div id="modal_instance">
-        <div id="ynModal" class="modal fade" tabindex="-1" role="dialog" >
-          <div class="modal-dialog" role="document">
-            <div class="modal-content">
-              <div class="modal-header">
-                <h4 class="modal-title">{{modal_title}}</h4>
-              </div>
-              <div class="modal-body">
-                {{modal_content}}
-              </div>
-              <div class="modal-footer">
-                <button type="button" class="btn btn-primary" onclick="socket.emit('sending yn','y'),$('#ynModal').modal('hide')">是</button>
-                <button type="button" class="btn btn-default" onclick="socket.emit('sending yn','n'),$('#ynModal').modal('hide')">否</button>
-              </div>
-            </div><!-- /.modal-content -->
-          </div><!-- /.modal-dialog -->
-        </div><!-- /.modal -->
+        <div id="ynModal" class="panel panel-info myModal" style="display:none">
+          <div class="panel-heading">
+            <h3 class="panel-title">{{modal_title}}</h3>
+          </div>
+          <div class="panel-body">
+            {{modal_content}}
+          </div>
+          <div class="panel-footer">
+              <button type="button" class="btn btn-primary" @click="sendyn('y')">是</button>
+              <button type="button" class="btn btn-default" @click="sendyn('n')">否</button>
+          </div>
+        </div>
+
+        <div id="cardsModal" class="panel panel-info myModal" style="display:none">
+          <div class="panel-heading">
+            <h3 class="panel-title">{{modal_title}}</h3>
+          </div>
+          <div class="panel-body">
+            {{modal_content}}
+          </div>
+          <div class="panel-footer">
+              <button type="button" class="btn btn-primary" @click="sendCards()">确认</button>
+          </div>
+        </div>
     </div>
     <div id="room_layout">
       <section class="leftbar">
@@ -24,7 +33,7 @@
                   <span class="count" :style="'left:'+index%2*50+'%'">
                     {{basicCardsAmount[index]}}
                   </span>
-                  <img :class="'basicCard '+((card.cost<=nowMoney) &&
+                  <img :class="'basicCard '+ ((card.cost<=nowMoney) &&
                   (nowPlayer == username) && (nowStage == 'Buy') && (nowBuy > 0)
                    && basicCardsAmount[index]>0?'cardActive':'')"
                    :src="filename(card)" :alt="name(card)" @click="buy(index,'basic')"/>
@@ -34,7 +43,7 @@
           <div id="cardMount">
               <p>手牌:{{nowCard}} 行动:{{nowAction}}</p>
               <p>金钱:{{nowMoney}} 购买:{{nowBuy}}</p>
-              <p>牌堆:{{myCard.length}}
+              <p>牌堆:{{myCardLength}}
           </div>
       </section>
       <section class="mainview">
@@ -79,7 +88,10 @@
           </div>
           <div id="cardInHand">
               <template v-for="(card,index) in myCardInHand">
-                      <img class="CardInHand" :src="filename(card)" :alt="name(card)" @click="use(index)"
+                      <img :class="'CardInHand ' + (
+                      (nowPlayer == username) && ((nowStage == 'Buy') && (card.type == '资源') ||　(nowStage == 'Action') && (card.type == '行动'))
+                       ?'cardActive ':'') + ((nowPlayer == username) && aCardUsing && (modal_from == 'cardsInHand') && !(card.chosen) ? 'selectable ' : '')
+                       +((nowPlayer == username) && aCardUsing && (card.chosen) ? 'chosen ' : '')" :src="filename(card)" :alt="name(card)" @click="use(index)"
                        :style="'width: ' + myCardInHand.length > 13 ? '5%' : myCardInHand.length > 10 ? '8%' : '10%' "/>
                   </template>
           </div>

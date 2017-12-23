@@ -45,7 +45,15 @@ var cardsource=[
         enspecial:'',
         remark:'',
         stage:'ex',
-        use:(user,f)=>{user.buy += 1; user.money += 2;return user;}
+        use:async (user,f,socket)=>{
+            user.buy += 1;
+            that = user.actionArea[user.actionArea.length - 1];
+            cardkey = await f.askCards(socket,that.chname,"请选择要废弃的牌",1,"cardsInHand");
+            cardkey = cardkey[0];
+            user.money += parseInt(user.cardsInHand[cardkey].cost);
+            f.trashCards(user,[cardkey],'cardsInHand');
+            return user;
+        }
     },{
         number:3,
         chname:'奇术「误导」',
@@ -259,8 +267,10 @@ var cardsource=[
         stage:'2',
         use:async (user,f,socket)=>{
             user.money += 2;
-            if(await f.askyn(socket,this.chname,"是否弃置牌堆所有牌？")){
+            that = user.actionArea[user.actionArea.length - 1];
+            if(await f.askyn(socket,that.chname,"是否弃置牌堆所有牌？")){
               f.dropCards(user,'all','cards');
+              f.sendRep(socket,user,socket.username + "弃掉了所有手牌");
             }
             return user;
         }
@@ -335,7 +345,7 @@ var cardsource=[
         jaspecial:'',
         enspecial:'',
         remark:'',
-        stage:'2'
+        stage:'2',
     },{
         number:17,
         chname:'知识与避世的少女「帕秋莉·诺蕾姬」',
@@ -458,7 +468,16 @@ var cardsource=[
         jaspecial:'',
         enspecial:'',
         remark:'',
-        stage:'1'
+        stage:'1',
+        use:async (user,f,socket)=>{
+            user.action += 1;
+            that = user.actionArea[user.actionArea.length - 1];
+            cardkey = await f.askCards(socket,that.chname,"请选择要弃置的牌",'any',"cardsInHand");
+            f.dropCards(user,cardkey,'cardsInHand');
+            console.log(cardkey);
+            f.drawCards(user,cardkey.length);
+            return user;
+        }
     },{
         number:23,
         chname:'梦符「封魔阵」',
@@ -850,10 +869,12 @@ var cardsource=[
         remark:'',
         stage:'4',
         use:async (user,f,socket)=>{
+        that = user.actionArea[user.actionArea.length - 1];
             f.drawCards(user,1);
             user.action += 2;
-            if(await f.askyn(socket,this.chname,"是否移出此牌？")){
-              f.trashCards(user,[user.actionArea.indexOf(this)],'actionArea',socket.room);
+            if(await f.askyn(socket,that.chname,"是否移出此牌？")){
+              f.trashCards(user,[user.actionArea.indexOf(that)],'actionArea');
+              f.sendRep(socket,user,socket.username + "废弃了" + that.chname);
               user.money += 2;
             }
             return user;

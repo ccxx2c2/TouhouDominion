@@ -91,6 +91,7 @@ class Room{
 
 class User{
     constructor(props){
+        this.room = props.room || "";
         this.status = props.status || "waiting"; //waiting, prepared, gaming,  watching
         this.cardsInHand = props.cardsInHand || [];
         this.cards = props.cards || [];
@@ -100,6 +101,8 @@ class User{
         this.vp = props.vp || 0;
         this.action = props.action || 1;
         this.buy = props.buy || 1;
+        this.affact = props.affact || false;//whether affect by attack
+        this.aCardUsing = props.aCardUsing || false;
     }
 }
 
@@ -110,6 +113,8 @@ class Card{
         this.no = props.no || 0;
         this.used = props.used || false;
         this.amount = props.amount || 0;
+        this.shown = props.shown || false;
+        this.chosen = props.chosen || false;
     }
 }
 
@@ -260,7 +265,8 @@ function initialGame(room,socket){
     });
     getCard(rooms[room].basicCards,tmp,tmp.length);
     for(key in rooms[room].users){
-        user = new User({});
+        if(user == undefined){user = new User({});}
+        else user = rooms[room].users[key];
         for(cardkey in rooms[room].startCards){
             card = rooms[room].startCards[cardkey];
             for(var i = 0;i < card.amount;i+=1){
@@ -296,6 +302,8 @@ function initialGame(room,socket){
         userPoint: rooms[room].userPoint,
         nowPlayer: rooms[room].nowPlayer,
         nowStage: stage[rooms[room].nowStage%3],
+        cardsInHand: user.cardsInHand,
+        cardsLength: user.cards.length,
         nowAction: 1,
         nowMoney: 0,
         nowBuy: 1,
@@ -326,18 +334,21 @@ function dropCards(usr,amount,from){
         console.log(usr[from]);
         return;
     }
-    if(typeof(amount) == "object"){
-      for(index in amount){
-        usr.drops = usr.drops.concat(usr[from].splice(index,1));
-      }
-      console.log(usr.drops);
+    if(Array.isArray(amount)){
+      myamount = amount.slice();
+      myamount.sort((a,b)=>{return a<b;});
+      myamount.forEach((index) =>{
+          console.log(index, usr[from][index]);
+          usr.drops = usr.drops.concat(usr[from].splice(index,1));
+      });
+    //  console.log(usr.drops);
       console.log(usr.actionArea);
       console.log(usr[from]);
     }
 }
 
-function trashCards(usr,amount,from,room){
-  room = rooms[room];
+function trashCards(usr,amount,from){
+  room = rooms[usr.room];
   console.log("in trash cards");
     if(amount == 'all'){
         room.trash = room.trash.concat(usr[from]);
@@ -346,10 +357,14 @@ function trashCards(usr,amount,from,room){
         console.log(usr[from]);
         return;
     }
-    if(typeof(amount) == "object"){
-      for(index in amount){
-        room.trash = room.trash.concat(usr[from].splice(index,1));
-      }
+    else if(Array.isArray(amount)){
+      console.log(amount);
+      myamount = amount.slice();
+      myamount.sort((a,b)=>{return a<b;});
+      myamount.forEach((index) =>{
+          console.log(index, usr[from][index]);
+          room.trash = room.trash.concat(usr[from].splice(index,1));
+      });
       console.log(room.trash);
       console.log(usr.actionArea);
       console.log(usr[from]);
@@ -357,6 +372,8 @@ function trashCards(usr,amount,from,room){
 }
 function drawCards(usr,amount){
     console.log("in drawCards");
+    console.log("amount:",amount);
+    console.log("length:",usr.cardsInHand.length)
     if(usr.cards.length < amount){
         amount -= usr.cards.length;
         usr.cardsInHand = usr.cardsInHand.concat(usr.cards.slice());
@@ -373,6 +390,7 @@ function askyn(socket,title,content){
   var y;
   console.log('in askyn');
   socket.askingyn = true;
+  statusUpdateforUse(socket,socket.room,rooms[socket.room].users[socket.username]);
   socket.emit('askyn',{
     title:title,
     content:content,
@@ -380,14 +398,63 @@ function askyn(socket,title,content){
   return new Promise( (resolve,reject) =>{
       socket.once('sending yn', (yn) =>{
           console.log('in sending yn');
-          if(!socket.askingyn || socket.username != room.nowPlayer) return;
+          if(!socket.askingyn || socket.username != rooms[socket.room].nowPlayer) return;
           y = yn == 'y';
           console.log('y: '+y);
+          socket.askingyn = false;
           resolve(y);
       });
   });
 }
-//var askyn = askynGenerator();
+function askCards(socket,title,content,amount,from){
+    console.log('in askCard');
+    socket.askingCard = true;
+    statusUpdateforUse(socket,socket.room,rooms[socket.room].users[socket.username]);
+    socket.emit('askCards',{
+      title:title,
+      content:content,
+      amount:amount,
+      from:from,
+    });
+    return new Promise( (resolve,reject) =>{
+        socket.once('sending cards', (cards) =>{
+            console.log('in sending cards');
+            if(!socket.askingCard || socket.username != rooms[socket.room].nowPlayer) return;
+            console.log('cards: ',cards);
+            if(!Array.isArray(cards)) cards = [];
+            if(amount != 'any' && cards.length < amount){
+                tmpCards = [];
+                rooms[socket.room].users[socket.username][from].forEach((e,i)=>{
+                    if(!(i in cards)) tmpCards.push(i);
+                });
+                tmpCards.shuffle();
+                cards = cards.concat(tmpCards.slice(0,amount - cards.length));
+            }
+            socket.askingCard = false;
+            resolve(cards);
+        });
+    });
+}
+function statusUpdateforUse(socket,room,user){
+  room = rooms[room];
+  socket.emit("statusUpdate",{
+      nowMoney: user.money,
+      nowCard: user.cardsInHand.length,
+      nowAction: user.action,
+      nowBuy: user.buy,
+      nowCard: user.cardsInHand.length,
+      drops: user.drops,
+      aCardUsing: user.aCardUsing,
+      cardsInHand: user.cardsInHand,
+      cardsLength: user.cards.length,
+  });
+  socket.to(socket.room).emit("statusUpdate",{
+      nowMoney: user.money,
+      nowCard: user.cardsInHand.length,
+      nowAction: user.action,
+      nowBuy: user.buy,
+  });
+}
 function endGame(room,socket){
     console.log(new Date().toLocaleTimeString() + ' ' +  "game in room#" + room + " ended");
     socket.emit("end game");
@@ -395,11 +462,22 @@ function endGame(room,socket){
     rooms[room].isStart = false;
     rooms[socket.room] = new Room({});
 }
+function sendRep(socket,user,content){
+  socket.emit("sendRep",{
+    content:content,
+  });
+  socket.to(socket.room).emit("sendRep",{
+    content:content,
+  });
+}
 var exFunctions = {
   drawCards:drawCards,
   trashCards:trashCards,
   dropCards:dropCards,
   askyn:askyn,
+  askCards:askCards,
+  statusUpdateforUse:statusUpdateforUse,
+  sendRep:sendRep,
 };
 
 io.on('connection',(socket) =>{
@@ -407,6 +485,7 @@ io.on('connection',(socket) =>{
     // socket.logined
     // socket.room
     // socket.askingyn
+    // socket.askingCard
     socket.logined = false;
     socket.room = -1;
     socket.askingyn = false;
@@ -460,6 +539,7 @@ io.on('connection',(socket) =>{
 
             socket.username = data.username;
             socket.logined = true;
+
         }
         else if(data.type === "change"){
             if(data.room.toString() >= ROOMAMOUNT) return;
@@ -479,9 +559,9 @@ io.on('connection',(socket) =>{
           || rooms[socket.room].host == undefined){ // initialize
             rooms[socket.room] = new Room({host:socket.username});
         }
-        rooms[socket.room].users[socket.username] = new User({status:"waiting"});
+        rooms[socket.room].users[socket.username] = new User({status:"waiting",room:socket.room});
+        console.log(rooms[socket.room].users[socket.username].room);
         showRoom(socket.room);
-
         socket.to(socket.room).emit('user joined',{
             username: socket.username,
         });
@@ -552,11 +632,6 @@ io.on('connection',(socket) =>{
         });
     });
 
-    socket.on('getCard', () => {
-        if(!socket.logined) return;
-        socket.emit('receive cards',rooms[socket.room].users[socket.username]);
-    });
-
     socket.on('nextStage', ()=>{
         if(!socket.logined) return;
         room = rooms[socket.room];
@@ -596,6 +671,8 @@ io.on('connection',(socket) =>{
             nowAction: room.users[room.nowPlayer].action,
             nowBuy: room.users[room.nowPlayer].buy,
             drops: usr.drops,
+            cardsInHand: usr.cardsInHand,
+            cardsLength: usr.cards.length,
             nowTurn: parseInt(room.nowStage/(3*Object.keys(room.users).length)+1)
         });
         socket.to(socket.room).emit("statusUpdate",{
@@ -628,25 +705,21 @@ io.on('connection',(socket) =>{
         rooms[socket.room].users[socket.username].actionArea.push(usingCard);
         rooms[socket.room].users[socket.username].cardsInHand.splice(index,1);//affect status update
 
-        rooms[socket.room].users[socket.username] = await usingCard.use(rooms[socket.room].users[socket.username],exFunctions,socket);
-        console.log('used');
-        if(usingCard.type == '行动') room.users[room.nowPlayer].action--;
+
+        usr.aCardUsing = true;
         socket.emit("statusUpdate",{
-            nowMoney: room.users[room.nowPlayer].money,
-            nowCard: room.users[room.nowPlayer].cardsInHand.length,
-            nowAction: room.users[room.nowPlayer].action,
-            nowBuy: room.users[room.nowPlayer].buy,
-            nowCard: room.users[room.nowPlayer].cardsInHand.length,
-            drops: usr.drops,
-            usingCard: usingCard,
+          usingCard: usingCard,
         });
         socket.to(socket.room).emit("statusUpdate",{
-            nowMoney: room.users[room.nowPlayer].money,
-            nowCard: room.users[room.nowPlayer].cardsInHand.length,
-            nowAction: room.users[room.nowPlayer].action,
-            nowBuy: room.users[room.nowPlayer].buy,
-            usingCard: usingCard,
+          usingCard: usingCard,
         });
+        if(usingCard.type == '行动') room.users[room.nowPlayer].action--;
+        console.log(rooms[socket.room].users[socket.username].room);
+        rooms[socket.room].users[socket.username] = await usingCard.use(rooms[socket.room].users[socket.username],exFunctions,socket);
+        console.log('used');
+
+        usr.aCardUsing = false;
+        statusUpdateforUse(socket,rooms[socket.room],usr);
     });
 
     socket.on('buyCard',(index) =>{
@@ -685,6 +758,8 @@ io.on('connection',(socket) =>{
             nowBuy: usr.buy,
             nowVp: usr.vp,
             buyed: buyingCard.chname,
+            cardsInHand: usr.cardsInHand,
+            cardsLength: usr.cards.length,
         });
         socket.to(socket.room).emit("statusUpdate",{
             cardsAmount: room.cardsAmount,
