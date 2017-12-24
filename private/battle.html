@@ -28,14 +28,14 @@
     </div>
     <div id="room_layout">
       <section class="leftbar">
-          <template v-for="(card,index) in basicCards">
+          <template v-for="(card,index) in basic">
               <div class="cardsFront">
                   <span class="count" :style="'left:'+index%2*50+'%'">
-                    {{basicCardsAmount[index]}}
+                    {{basicRemain[index]}}
                   </span>
                   <img :class="'basicCard '+ ((card.cost<=nowMoney) &&
                   (nowPlayer == username) && (nowStage == 'Buy') && (nowBuy > 0)
-                   && basicCardsAmount[index]>0?'cardActive':'')"
+                   && basicRemain[index]>0?'cardActive':'')"
                    :src="filename(card)" :alt="name(card)" @click="buy(index,'basic')"/>
               </div>
               <div v-if="index%2===1" class="clearfix visible-block"></div>
@@ -50,15 +50,15 @@
           <div id="panel">
               <div id="supply">
                   <div class="row">
-                      <template v-for="(card,index) in cards">
+                      <template v-for="(card,index) in supply">
                           <div class="cardsFront">
                               <span class="count" :style="'left:'+index%5*16.67+'%'">
-                                {{cardsAmount[index]}}
+                                {{supplyRemain[index]}}
                               </span>
                               <img :class="'cards img-responsive col-xs-2 col-sm-2 col-md-2 col-lg-2 '
                               + ((card.cost<=nowMoney) && (nowPlayer == username)
                               && (nowStage == 'Buy')&& (nowBuy > 0) &&
-                              cardsAmount[index]>0?'cardActive':'') "
+                              supplyRemain[index]>0?'cardActive':'') "
                               data-container="body" data-toggle="popover" data-placement="bottom"
                               data-trigger='hover' :data-original-title="title(card)"
                               data-html="true" :data-content="description(card).split('\n').join('<br>')"
@@ -87,12 +87,12 @@
                   </template>
           </div>
           <div id="cardInHand">
-              <template v-for="(card,index) in myCardInHand">
+              <template v-for="(card,index) in myHand">
                       <img :class="'CardInHand ' + (
                       (nowPlayer == username) && ((nowStage == 'Buy') && (card.type == '资源') ||　(nowStage == 'Action') && (card.type == '行动'))
-                       ?'cardActive ':'') + ((nowPlayer == username) && aCardUsing && (modal_from == 'cardsInHand') && !(card.chosen) ? 'selectable ' : '')
+                       ?'cardActive ':'') + ((nowPlayer == username) && aCardUsing && (modal_from == 'hand') && !(card.chosen) ? 'selectable ' : '')
                        +((nowPlayer == username) && aCardUsing && (card.chosen) ? 'chosen ' : '')" :src="filename(card)" :alt="name(card)" @click="use(index)"
-                       :style="'width: ' + myCardInHand.length > 13 ? '5%' : myCardInHand.length > 10 ? '8%' : '10%' "/>
+                       :style="'width: ' + myHand.length > 13 ? '5%' : myHand.length > 10 ? '8%' : '10%' "/>
                   </template>
           </div>
       </section>

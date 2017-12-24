@@ -1,18 +1,19 @@
+"use strict";
 //init page
 $("#loginModal").modal("show");
 $("#announceModal").modal("hide");
-for(var i = 0; i < ROOMAMOUNT; i+=1){
+for(let i = 0; i < ROOMAMOUNT; i+=1){
   $("#roomnumber").append(`<option value='${i}'>${i}</option>`)
 }
+
 function register(){ // emit:register
   // global username
     $(".alert.alert-danger").hide();
     $(".alert.alert-success").hide();
     username = $('#username').val();
-    var password = $('#password').val();
     socket.emit('register',{
         username: username,
-        password: password
+        password: $('#password').val()
     });
 
 }
@@ -26,11 +27,10 @@ function login(){//emit: verifyWaiting
         return;
     }
     username = $('#username').val();
-    var password = $('#password').val();
     room = $('#roomnumber').val();
     socket.emit('verifyWaiting',{
         username: username,
-        password: password,
+        password: $('#password').val(),
         room: room,
         type: "new"
     });
@@ -41,11 +41,11 @@ function login(){//emit: verifyWaiting
  */
 socket.on('registered', (data) => {
     if(data.valid){
-        $(".alert.alert-success").text("注册成功！").show();
+        $("#loginModal").find(".alert.alert-success").text("注册成功！").show();
     }
     else{
         if(data.errorcode === 1){
-            $(".alert.alert-danger").text("暂不开放注册！").show();
+            $("#loginModal").find(".alert.alert-danger").text("暂不开放注册！").show();
             return;
         }
     }

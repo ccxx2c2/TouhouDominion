@@ -19,7 +19,7 @@
               <p>Supply张数<input v-model=lim type=text size=4 maxlength=2></input></p>
              <br>
                 <div class="row">
-                    <template v-for="(card,index) in cards">
+                    <template v-for="(card,index) in supply">
                         <img class="cards img-responsive col-xs-2 col-sm-2 col-md-2 col-lg-2"
                         data-container="body" data-toggle="popover"
                         :data-placement="(index/5>=1)?'bottom':'top'"

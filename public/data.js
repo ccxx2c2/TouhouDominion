@@ -6,7 +6,7 @@ if(typeof(module) == "undefined"){
         //number, chname,janame,enname,expansion,type,type2,type3,cost,cheffect,jaeffect,eneffect,chspecial,jaspecial,enspecial,remark,stage
         //^(.*?)\t(.*?)\t(.*?)\t(.*?)\t(.*?)\t(.*?)\t(.*?)\t(.*?)\t(.*?)\t(.*?)\t(.*?)\t(.*?)\t(.*?)\t(.*?)\t(.*?)\t(.*?)\t(.*?)$
         //{\n\tnumber:$1,\n\tchname:'$2',\n\tjaname:'$3',\n\tenname:'$4',\n\texpansion:'$5',\n\ttype:'$6',\n\ttype2:'$7',\n\ttype3:'$8',\n\tcost:'$9',\n\tcheffect:'$10',\n\tjaeffect:'$11',\n\teneffect:'$12',\n\tchspecial:'$13',\n\tjaspecial:'$14',\n\tenspecial:'$15',\n\tremark:'$16',\n\tstage:'$17'\n},
-
+const MAX_INT = 999;
 var cardSource=[
     [{
         number:1,
@@ -26,7 +26,11 @@ var cardSource=[
         enspecial:'',
         remark:'',
         stage:'3',
-        use:(user)=>{user.buy += 1; user.money += 2;return user;}
+        use:(user) => {
+          user.gainBuy(1);
+          user.gainMoney(2);
+          return user;
+        }
     },{
         number:2,
         chname:'恶魔之妹「芙兰朵露·斯卡雷特」',
@@ -45,13 +49,12 @@ var cardSource=[
         enspecial:'',
         remark:'',
         stage:'ex',
-        use:async (user,f,socket)=>{
-            user.buy += 1;
-            that = user.actionArea[user.actionArea.length - 1];
-            cardkey = await f.askCards(socket,that.chname,"请选择要废弃的牌",1,"cardsInHand");
-            cardkey = cardkey[0];
-            user.money += parseInt(user.cardsInHand[cardkey].cost);
-            f.trashCards(user,[cardkey],'cardsInHand');
+        use:async (user,f,socket) => {
+            user.gainBuy(1);
+            let that = user.actionArea[user.actionArea.length - 1];
+            let cardkey = await f.askCards(socket, that.chname, "请选择要废弃的牌", 'equal', 1, "hand");
+            user.gainMoney(Number(user.hand[cardkey[0]].cost));
+            user.trash(cardkey,'hand');
             return user;
         }
     },{
@@ -90,11 +93,11 @@ var cardSource=[
         enspecial:'',
         remark:'',
         stage:'ex',
-        use:(user,f)=>{
-            user.money += 2;
-            if(user.actionUsed>2){
-                f.drawCards(user,1);
-                user.action += 1;
+        use: (user,f) => {
+            user.gainMoney(2);
+            if(user.actionUsed > 2){
+                user.draw(1);
+                user.gainAction(1);
             }
             return user;
         }
@@ -171,8 +174,8 @@ var cardSource=[
         remark:'',
         stage:'4',
         use:(user,f)=>{
-            f.drawCards(user,2);
-            user.action += 1;
+            user.draw(2);
+            user.gainAction(1);
             return user;
         }
     },{
@@ -194,10 +197,10 @@ var cardSource=[
         remark:'',
         stage:'5、6',
         use:(user,f)=>{
-            f.drawCards(user,1);
-            user.action += 1;
-            user.buy += 1;
-            user.money += 1;
+            user.draw(1);
+            user.gainAction(1);
+            user.gainBuy(1);
+            user.gainMoney(1);
             return user;
         }
     },{
@@ -237,13 +240,14 @@ var cardSource=[
         remark:'',
         stage:'2',
         use:(user,f)=>{
-            f.drawCards(user,2);
+            user.draw(2);
             return user;
         },
         reaction:async (user,f,socket)=>{
-            if(await f.askyn(socket,this.chname,"是否展示"+this.chname+"并免收伤害影响？")){
+            let that = user.actionArea[user.actionArea.length - 1];
+            if(await f.askyn(socket,that.chname,"是否展示"+that.chname+"并免收伤害影响？")){
               user.affect = false;
-              this.shown = true;
+              that.shown = true;
             }
             return user;
         }
@@ -266,10 +270,10 @@ var cardSource=[
         remark:'',
         stage:'2',
         use:async (user,f,socket)=>{
-            user.money += 2;
-            that = user.actionArea[user.actionArea.length - 1];
+            user.gainMoney(2);
+            let that = user.actionArea[user.actionArea.length - 1];
             if(await f.askyn(socket,that.chname,"是否弃置牌堆所有牌？")){
-              f.dropCards(user,'all','cards');
+              user.drop('all','deck');
               f.sendRep(socket,user,socket.username + "弃掉了所有手牌");
             }
             return user;
@@ -291,7 +295,19 @@ var cardSource=[
         jaspecial:'',
         enspecial:'',
         remark:'',
-        stage:'自机'
+        stage:'自机',
+        use:async (user,f,socket)=>{
+            let that = user.actionArea[user.actionArea.length - 1];
+            while(user.hand.length < 7 && user.deck.length + user.drops.length > 0){
+                user.draw(1);
+                if(user.hand[user.hand.length - 1].type === "行动"){
+                    if(await f.askyn(socket,that.chname,`是否弃置${user.hand[user.hand.length - 1].chname}？`)){
+                        user.drop([user.hand.length - 1],'hand');
+                    }
+                }
+            }
+            return user;
+        }
     },{
         number:14,
         chname:'彩符「彩光乱舞」',
@@ -365,7 +381,7 @@ var cardSource=[
         remark:'',
         stage:'4、ex',
         use:(user,f)=>{
-            f.drawCards(user,3);
+            user.draw(3);
             return user;
         }
     },{
@@ -385,7 +401,16 @@ var cardSource=[
         jaspecial:'',
         enspecial:'',
         remark:'',
-        stage:'6'
+        stage:'6',
+        use:(user,f)=>{
+            user.draw(4);
+            user.gainBuy(1);
+            for(userName in f.rooms[user.room].users){
+                if(f.rooms[user.room].users[userName] === user) continue;
+                f.rooms[user.room].users[userName].draw(1);
+            }
+            return user;
+        }
     },{
         number:19,
         chname:'博丽神社的巫女小姐「博丽灵梦」',
@@ -405,9 +430,9 @@ var cardSource=[
         remark:'',
         stage:'自机',
         use:(user)=>{
-            user.action += 2;
-            user.buy += 1;
-            user.money += 2;
+            user.gainAction(2);
+            user.gainBuy(1);
+            user.gainMoney(2);
             return user;
         }
     },{
@@ -429,8 +454,8 @@ var cardSource=[
         remark:'',
         stage:'自机',
         use:(user,f)=>{
-            f.drawCards(user,1);
-            user.action += 2;
+            user.draw(1);
+            user.gainAction(2);
             return user;
         }
     },{
@@ -470,12 +495,12 @@ var cardSource=[
         remark:'',
         stage:'1',
         use:async (user,f,socket)=>{
-            user.action += 1;
-            that = user.actionArea[user.actionArea.length - 1];
-            cardkey = await f.askCards(socket,that.chname,"请选择要弃置的牌",'any',"cardsInHand");
-            f.dropCards(user,cardkey,'cardsInHand');
+            user.gainAction(1);
+            let that = user.actionArea[user.actionArea.length - 1];
+            let cardkey = await f.askCards(socket,that.chname,"请选择要弃置的牌",'any', MAX_INT,"hand");
+            user.drop(cardkey,'hand');
             console.log(cardkey);
-            f.drawCards(user,cardkey.length);
+            user.draw(cardkey.length);
             return user;
         }
     },{
@@ -766,7 +791,15 @@ var cardSource=[
         jaspecial:'',
         enspecial:'',
         remark:'',
-        stage:'4'
+        stage:'4',
+        use:async (user,f,socket)=>{
+            user.draw(3);
+            let that = user.actionArea[user.actionArea.length - 1];
+            let cardkey = await f.askCards(socket,that.chname,"请选择要放回牌堆顶的牌",'equal', 1,"hand");
+            user.drop(cardkey,'hand','deck','top');
+            console.log(cardkey);
+            return user;
+        }
     },{
         number:14,
         chname:'骚灵小号手「梅露兰·普莉兹姆利巴」',
@@ -784,7 +817,16 @@ var cardSource=[
         jaspecial:'',
         enspecial:'',
         remark:'',
-        stage:'4'
+        stage:'4',
+        use:async (user,f,socket)=>{
+            user.draw(3);
+            user.gainAction(1);
+            let that = user.actionArea[user.actionArea.length - 1];
+            let cardkey = await f.askCards(socket,that.chname,"请选择要弃置的牌",'equal', 3, "hand");
+            user.drop(cardkey,'hand');
+            console.log(cardkey);
+            return user;
+        }
     },{
         number:15,
         chname:'大合葬「灵车大协奏曲」',
@@ -804,9 +846,9 @@ var cardSource=[
         remark:'',
         stage:'4',
         use:(user,f)=>{
-            f.drawCards(user,1);
-            user.action += 2;
-            user.money += 1;
+            user.draw(1);
+            user.gainAction(2);
+            user.gainMoney(1);
             return user;
         }
     },{
@@ -846,7 +888,7 @@ var cardSource=[
         remark:'',
         stage:'ed',
         use:(user)=>{
-            user.money += 2;
+            user.gainMoney(2);
             return user;
         },
         vp:2
@@ -869,13 +911,13 @@ var cardSource=[
         remark:'',
         stage:'4',
         use:async (user,f,socket)=>{
-        that = user.actionArea[user.actionArea.length - 1];
-            f.drawCards(user,1);
-            user.action += 2;
+            let that = user.actionArea[user.actionArea.length - 1];
+            user.draw(1);
+            user.gainAction(2);
             if(await f.askyn(socket,that.chname,"是否移出此牌？")){
-              f.trashCards(user,[user.actionArea.indexOf(that)],'actionArea');
+              user.trash([user.actionArea.indexOf(that)],'actionArea');
               f.sendRep(socket,user,socket.username + "废弃了" + that.chname);
-              user.money += 2;
+              user.gainMoney(2);
             }
             return user;
         }
@@ -932,7 +974,14 @@ var cardSource=[
         jaspecial:'',
         enspecial:'',
         remark:'',
-        stage:'ph'
+        stage:'ph',
+        use:async (user,f,socket)=>{
+            let that = user.actionArea[user.actionArea.length - 1];
+            let cardkey = await f.askCards(socket,that.chname,"请选择要废弃的牌",'lte', 4,"hand");
+            user.trash(cardkey,'hand');
+            console.log(cardkey);
+            return user;
+        }
     },{
         number:22,
         chname:'冬天的遗忘之物「蕾蒂·霍瓦特洛克」',
@@ -2582,21 +2631,21 @@ var cardSource=[
         expansion:'基础牌',
         type:'资源',
         cost:0,
-        use:(user)=>{user.money += 1; return user;}
+        use:(user)=>{user.gainMoney(1); return user;}
     },{
         number:2,
         chname:'奉纳米',
         expansion:'基础牌',
         type:'资源',
         cost:3,
-        use:(user)=>{user.money += 2; return user;}
+        use:(user)=>{user.gainMoney(2); return user;}
     },{
         number:3,
         chname:'御神酒',
         expansion:'基础牌',
         type:'资源',
         cost:6,
-        use:(user)=>{user.money += 3; return user;}
+        use:(user)=>{user.gainMoney(3); return user;}
     },{
         number:4,
         chname:'神社',
