@@ -4,9 +4,20 @@
     <section class="col-sm-10">
         <div id="panel">
             <div id="menubar">
-                <p> 指定额外卡组：<button type="button" class="btn btn-primary" onclick="exCard(0)">5元10分</button> 天气 船 城 璋 魔法使 ...<br />指定起始手牌：7钱3分 7钱3地灵 4钱3飞碟3分<br />指定起始卡包：红 妖 永 Ex 风 地<br />Supply张数<input v-model=lim type=text size=4 maxlength=2></input></p>
-
-                <br>
+            <br>
+              <template v-for = "type in options">
+                  <p>
+                    {{type.text}}
+                    <template v-for="(value,key) in type" >
+                      <template v-if="typeof(value)!=='string'">
+                        <input :type="type.type" disabled="disabled" :checked="value" />
+                        {{key}}
+                      </template>
+                    </template>
+                  </p>
+              </template>
+              <p>Supply张数<input v-model=lim type=text size=4 maxlength=2></input></p>
+             <br>
                 <div class="row">
                     <template v-for="(card,index) in cards">
                         <img class="cards img-responsive col-xs-2 col-sm-2 col-md-2 col-lg-2"
@@ -40,10 +51,10 @@
           <div class="modal-body">
             <div class="form-group">
               <select class="form-control" id="targetRoom">
-                <option value="" disabled selected>目标房间..</option>
-                <option value="0">0</option>
-                <option value="1">1</option>
-                <option value="2">2</option>
+                <option value="" selected disabled>目标房间..</option>
+                <template v-for="room in roomAmount">
+                  <option :value="room">{{room}}</option>
+                </template>
               </select>
             </div>
           </div>

@@ -29,6 +29,15 @@ Array.prototype.shuffle = function() {
     }
     return input;
 }
+Array.prototype.remove = function(element) {
+    var index = this.indexOf(element);
+    if(index == -1){
+        return -1;
+    }
+    else{
+      return this.splice(index, 1);
+    }
+};
 
 function sleep(delay){
   return ()=>{
@@ -54,7 +63,7 @@ myread('battle.html',1);
 
 //http.listen(80);
 https.listen(443, function(){
-  console.log(new Date().toLocaleTimeString() + ' listening on *:443');
+  console.log(new Date().toLocaleString() + ' listening on *:443');
 });
 
 app.use(express.static(path.join(__dirname,'public')));
@@ -68,6 +77,7 @@ var rooms = [];
 var stage = ['Action','Buy','Cleanup'];
 class Room{
     constructor(props){
+        this.sockets = props.sockets || [];
         this.users = props.users || {};
         this.userorder = props.userorder || []; //人物顺序
         this.trash = props.trash || [];
@@ -87,6 +97,16 @@ class Room{
         this.nowPlayerPoint = props.nowPlayerPoint || 0;
         this.nowStage = props.nowStage || 0;
     }
+    show(){
+        console.log(`${new Date().toLocaleString()} users in room#${rooms.indexOf(this)} are:{name,prepared}`);
+        console.log(Object.keys(this.users));
+        var statuses = [];
+        for(var username in this.users){
+            statuses.push(this.users[username].status);
+        }
+        console.log(statuses);
+        console.log(`roomhost is ${this.host}`);
+    }
 }
 
 class User{
@@ -103,6 +123,7 @@ class User{
         this.buy = props.buy || 1;
         this.affact = props.affact || false;//whether affect by attack
         this.aCardUsing = props.aCardUsing || false;
+        this.actionUsed = props.actionUsed || 0;
     }
 }
 
@@ -142,17 +163,6 @@ class DomCard extends Card{
     }
 }
 
-function showRoom(room){//in console.log
-    console.log(new Date().toLocaleTimeString() + ' ' +  "users in room#" + room + " are:{name,prepared}");
-    console.log(Object.keys(rooms[room].users));
-    statuses = [];
-    for(username in rooms[room].users){
-        statuses.push(rooms[room].users[username].status);
-    }
-    console.log(statuses);
-    console.log("roomhost is " + rooms[room].host);
-}
-
 function generateCard(room,limit,type){
     var randarr=[];
     room.cardArray=[];
@@ -183,8 +193,8 @@ function getCard(target,src,limit,index){
         target=[];
         index = undefined;
     }
-    console.log(new Date().toLocaleTimeString() + ' ' +  "in getCard");
-    console.log(src,limit,index);
+    console.log(`${new Date().toLocaleString()} in getCard`);
+    console.log(limit,index);
     for(var i=0;i<limit;i++){
         if(index != undefined && index != i) continue;
         for(var j=0;j<cardData.length;j++){
@@ -192,7 +202,7 @@ function getCard(target,src,limit,index){
                 target[i] = [];
                 Object.assign(target[i],src[i],cardData[j][src[i].number-1]);
                 target[i] = new DomCard(target[i]);
-               // console.log(target[i]);
+                console.log(target[i].chname);
                 break;
             }
         }
@@ -213,7 +223,7 @@ function changeCard(room,limit,index){
 };
 
 function initialGame(room,socket){
-    console.log(new Date().toLocaleTimeString() + ' ' +  "game in room#" + room + " started");
+    console.log(`${new Date().toLocaleString()} game in room#${room} started`);
     rooms[room].isStart = true;
     socket.emit('startGame',{
         page: pages[1],
@@ -294,35 +304,23 @@ function initialGame(room,socket){
     });
 
 
-
-    socket.emit("statusUpdate",{
-        cardsAmount: rooms[room].cardsAmount,
-        basicCardsAmount: rooms[room].basicCardsAmount,
-        usersName: rooms[room].userorder,
-        userPoint: rooms[room].userPoint,
-        nowPlayer: rooms[room].nowPlayer,
-        nowStage: stage[rooms[room].nowStage%3],
-        cardsInHand: user.cardsInHand,
-        cardsLength: user.cards.length,
-        nowAction: 1,
-        nowMoney: 0,
-        nowBuy: 1,
-        nowCard: 5,
-        nowTurn: 1,
-    });
-    socket.to(room).emit("statusUpdate",{
-        cardsAmount: rooms[room].cardsAmount,
-        basicCardsAmount: rooms[room].basicCardsAmount,
-        usersName: rooms[room].userorder,
-        userPoint: rooms[room].userPoint,
-        nowPlayer: rooms[room].nowPlayer,
-        nowStage: stage[rooms[room].nowStage%3],
-        nowAction: 1,
-        nowMoney: 0,
-        nowBuy: 1,
-        nowCard: 5,
-        nowTurn: 1,
-    });
+    for(var socket of rooms[room].sockets){
+        socket.emit("statusUpdate",{
+            cardsAmount: rooms[room].cardsAmount,
+            basicCardsAmount: rooms[room].basicCardsAmount,
+            usersName: rooms[room].userorder,
+            userPoint: rooms[room].userPoint,
+            nowPlayer: rooms[room].nowPlayer,
+            nowStage: stage[rooms[room].nowStage%3],
+            cardsInHand: rooms[room].users[socket.username].cardsInHand,
+            cardsLength: rooms[room].users[socket.username].cards.length,
+            nowAction: 1,
+            nowMoney: 0,
+            nowBuy: 1,
+            nowCard: 5,
+            nowTurn: 1,
+        });
+    }
 }
 
 function dropCards(usr,amount,from){
@@ -330,20 +328,20 @@ function dropCards(usr,amount,from){
     if(amount == 'all'){
         usr.drops = usr.drops.concat(usr[from]);
         usr[from] = [];
-        console.log(usr.drops);
-        console.log(usr[from]);
+      //  console.log(usr.drops);
+      //  console.log(usr[from]);
         return;
     }
     if(Array.isArray(amount)){
       myamount = amount.slice();
       myamount.sort((a,b)=>{return a<b;});
       myamount.forEach((index) =>{
-          console.log(index, usr[from][index]);
+          console.log(index, usr[from][index].chname, usr[from][index].no);
           usr.drops = usr.drops.concat(usr[from].splice(index,1));
       });
     //  console.log(usr.drops);
-      console.log(usr.actionArea);
-      console.log(usr[from]);
+      //console.log(usr.actionArea);
+    //  console.log(usr[from]);
     }
 }
 
@@ -362,12 +360,13 @@ function trashCards(usr,amount,from){
       myamount = amount.slice();
       myamount.sort((a,b)=>{return a<b;});
       myamount.forEach((index) =>{
-          console.log(index, usr[from][index]);
+          console.log(index, usr[from][index].chname, usr[from][index].no);
+          if(usr[from][index].vp != undefined){usr.vp -= usr[from][index].vp;}
           room.trash = room.trash.concat(usr[from].splice(index,1));
       });
-      console.log(room.trash);
-      console.log(usr.actionArea);
-      console.log(usr[from]);
+    //  console.log(room.trash);
+    //  console.log(usr.actionArea);
+    //  console.log(usr[from]);
     }
 }
 function drawCards(usr,amount){
@@ -456,7 +455,7 @@ function statusUpdateforUse(socket,room,user){
   });
 }
 function endGame(room,socket){
-    console.log(new Date().toLocaleTimeString() + ' ' +  "game in room#" + room + " ended");
+    console.log(`${new Date().toLocaleString()} game in room#${room} ended`);
     socket.emit("end game");
     socket.to(room).emit("end game");
     rooms[room].isStart = false;
@@ -489,11 +488,13 @@ io.on('connection',(socket) =>{
     socket.logined = false;
     socket.room = -1;
     socket.askingyn = false;
+    socket.askingCard = false;
 
-    console.log(new Date().toLocaleTimeString() + ' ' +  'a user connected');
+    console.log(`${new Date().toLocaleString()} a user connected`);
 
-    // now no register
+    // now unavailable
     socket.on('register',(data) => {
+        //socket.logined
         if(socket.logined) return;
         socket.emit('registered',{
             valid: false,
@@ -507,82 +508,92 @@ io.on('connection',(socket) =>{
      * emit: userjoined, verified, otherReady, generateCard
      */
     socket.on('verifyWaiting',(data) => {
-        if(rooms[data.room.toString()]!=undefined
-        && rooms[data.room.toString()].isStart == true
-        && rooms[data.room.toString()].users.length > 0){
+        // socket.username
+        // socket.logined
+        // socket.room
+        // rooms[],unlogUserList[],userList
+        if(typeof(data) != "object"
+        || ( rooms[data.room.toString()] !== undefined
+          && rooms[data.room.toString()].host !== undefined
+          && rooms[data.room.toString()].isStart === true)
+        || data.room >= ROOMAMOUNT ){
                 socket.emit('verified',{
                     valid: false,
-                    errorcode: 1
+                    errorcode: 1,
+                    from: data.type,
                 });
                 return;
         }
         if(data.type === "new"){//log in
             if(socket.logined) return;
 
-            console.log(new Date().toLocaleTimeString() + ' ' +  "attempt to login: " + data.username);
-            console.log("inputed password: " + data.password);
-            console.log("valid password: " + userList[data.username]);
-            if(data.room < ROOMAMOUNT
-               && unlogUserList.indexOf(data.username) != -1
-               && data.password == userList[data.username]){
-                   unlogUserList.splice(unlogUserList.indexOf(data.username),1);
-            }
-            else{ // login failed
+            console.log(`${new Date().toLocaleString()} attempt to login: ${data.username}`);
+            console.log(`inputed password: ${data.password}`);
+            console.log(`valid password: ${userList[data.username]}`);
+            if(unlogUserList.includes(data.username)
+               && data.password === userList[data.username]){
+                   unlogUserList.remove(data.username);
+            }// check if valid
+            else { // login failed
                 socket.emit('verified',{
                     valid: false,
-                    errorcode: 1
+                    errorcode: 2
                 });
                 return;
             }
 
-            console.log(data.username + ' logged in');
+            console.log(`${data.username} logged in`);
 
             socket.username = data.username;
             socket.logined = true;
-
         }
         else if(data.type === "change"){
-            if(data.room.toString() >= ROOMAMOUNT) return;
             socket.leave(socket.room);
             delete rooms[socket.room].users[socket.username];
+            rooms[socket.room].sockets.remove(socket);
             socket.to(socket.room).emit('user left',{
                 username: socket.username,
             });
-            console.log(new Date().toLocaleTimeString() + ' ' +  socket.username
-            + " changed room from " + socket.room + " to " + data.room.toString());
+            if(Object.keys(rooms[socket.room].users).length === 0){
+                delete rooms[socket.room];
+            }
+            console.log(`${new Date().toLocaleString()} ${socket.username} changed room from ${socket.room} to ${data.room.toString()}`);
         }
+        else return;
 
         socket.room = data.room.toString();
         socket.join(socket.room);
-        if(rooms[socket.room] == undefined
-          || rooms[socket.room].users == undefined
-          || rooms[socket.room].host == undefined){ // initialize
+        if(rooms[socket.room] === undefined
+          || rooms[socket.room].users === undefined
+          || Object.keys(rooms[socket.room].users).length === 0
+          || rooms[socket.room].host === undefined){ // initialize
             rooms[socket.room] = new Room({host:socket.username});
         }
-        rooms[socket.room].users[socket.username] = new User({status:"waiting",room:socket.room});
-        console.log(rooms[socket.room].users[socket.username].room);
-        showRoom(socket.room);
+        var room = rooms[socket.room];
+        room.users[socket.username] = new User({status:"waiting",room:socket.room});
+        room.sockets.push(socket);
+
+        room.show();
         socket.to(socket.room).emit('user joined',{
             username: socket.username,
         });
 
         socket.emit('verified',{
             valid: true,
-            users: rooms[socket.room].users,
+            users: room.users,
             page: data.type === "new"? pages[0] : undefined,
             roomhost: rooms[socket.room].host
         });
 
-        for(user in rooms[socket.room].users)
+        for(var user in room.users)
             socket.emit('otherReady',{
                 name: user,
-                prepared: rooms[socket.room].users[user].status=='prepared',
+                prepared: room.users[user].status === 'prepared',
                 already: false
             });
 
-        if(rooms[socket.room].cards != undefined){
-          // console.log(rooms[socket.room].cards);
-            socket.emit('generateCard',rooms[socket.room].cards);
+        if(room.cards !== undefined){
+            socket.emit('generateCard',room.cards);
         }
     });
 
@@ -592,7 +603,7 @@ io.on('connection',(socket) =>{
             return;
         }
 
-        console.log(new Date().toLocaleTimeString() + ' ' +  'room#' + socket.room + ' sending card..');
+        console.log(`${new Date().toLocaleString()} room#${socket.room} sending card..`);
         if(data.index != undefined){
             changeCard(rooms[socket.room],data.limit,data.index);
         }
@@ -643,7 +654,7 @@ io.on('connection',(socket) =>{
             usr.money = 0;
             usr.action = 1;
             usr.buy = 1;
-
+            usr.actionUsed = 0;
             //dropCards(usr,'all');
             drawCards(usr,5);
 
@@ -660,9 +671,9 @@ io.on('connection',(socket) =>{
             usr.actionArea = [];
             usr.cardsInHand = [];
         }
-        console.log(new Date().toLocaleTimeString() + ' ' +  " in room "+socket.room);
-        console.log("in stage " + room.nowStage);
-        console.log('in player ' + room.nowPlayer);
+        console.log(`${new Date().toLocaleString()} in room ${socket.room}`);
+        console.log(`in stage ${room.nowStage}`);
+        console.log(`in player ${room.nowPlayer}`);
         socket.emit("statusUpdate",{
             nowPlayer: room.nowPlayer,
             nowStage: stage[room.nowStage%3],
@@ -693,7 +704,7 @@ io.on('connection',(socket) =>{
         || rooms[socket.room].users[socket.username].cardsInHand[index] == undefined) return;
         usr = rooms[socket.room].users[socket.username];
         usingCard = rooms[socket.room].users[socket.username].cardsInHand[index];
-        console.log(new Date().toLocaleTimeString() + ' ' +  " in room "+socket.room);
+        console.log(new Date().toLocaleString() + `  ${ " in room "+socket.room}`);
         console.log("in using card:");
         console.log(usingCard.chname,usingCard.no,usingCard.used);
         if(usingCard == undefined || usingCard.used)return;
@@ -713,7 +724,10 @@ io.on('connection',(socket) =>{
         socket.to(socket.room).emit("statusUpdate",{
           usingCard: usingCard,
         });
-        if(usingCard.type == '行动') room.users[room.nowPlayer].action--;
+        if(usingCard.type == '行动') {
+          room.users[room.nowPlayer].action--;
+          usr.actionUsed ++;
+        }
         console.log(rooms[socket.room].users[socket.username].room);
         rooms[socket.room].users[socket.username] = await usingCard.use(rooms[socket.room].users[socket.username],exFunctions,socket);
         console.log('used');
@@ -740,7 +754,7 @@ io.on('connection',(socket) =>{
         buyingCard = new DomCard(buyingCard);
         buyingCard.no = no;
         (index < room.cards.length ? (room.cardsAmount[index]--):(room.basicCardsAmount[index - room.cards.length]--));
-        console.log(new Date().toLocaleTimeString() + ' ' +  " in room "+socket.room);
+        console.log(`${new Date().toLocaleString()} in room ${socket.room}`);
         console.log("in buying Card");
         console.log(buyingCard.chname,buyingCard.no,buyingCard.vp);
         console.log(usr.money,buyingCard.cost);
@@ -775,18 +789,19 @@ io.on('connection',(socket) =>{
 
 
     socket.on('disconnect', () => { //emit userleft
-        console.log(new Date().toLocaleTimeString() + ' ');
+        console.log(new Date().toLocaleString() + ' ');
         if(!socket.logined)
             console.log('a user disconnected');
 
         if(socket.logined){
+            var room = rooms[socket.room];
             console.log(socket.username + ' disconnected');
             socket.leave(socket.room);
             delete rooms[socket.room].users[socket.username];
             if(rooms[socket.room].host == socket.username){
                 rooms[socket.room].host = Object.keys(rooms[socket.room].users)[0];
             }
-            showRoom(socket.room);
+            room.show();
             unlogUserList.push(socket.username);
             socket.to(socket.room).emit('user left',{
                 username: socket.username

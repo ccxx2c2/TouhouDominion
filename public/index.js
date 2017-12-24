@@ -6,7 +6,7 @@ const ROOMAMOUNT = 3;
 var socket = io();
 var username;
 var password;
-var room;
+var room = 0;
 //import cardsource from data.js
 var connected = false;
 var prepared = false;
@@ -267,7 +267,7 @@ function changeRoom(){// emit:verifyWaiting
         $(".alert.alert-danger").text("目标房间不合法！").show();
         return;
     }
-    var message = "Leave room #"+room;
+    var message = "Leave room #" + room;
     addMessage(message,'announce');
 
     room = roomto;
@@ -356,14 +356,13 @@ socket.on('verified', (data) => {
             regVue(1);
        }
 
-        if(host!=username){
-            console.log(host+' '+username);
+        if(host != username){
             $(".btn.btn-success").attr("disabled","disabled");
             $("#readybutton").removeAttr("disabled");
             $("#readybutton").text("准备");
         }
 
-        $("#room").text("room#"+(room || 0)+"  ");
+        $("#room").text("room#" + room + "  ");
         $("#sidebar").html("<span style='font-weight:bold;'>用户列表：</span><br />");
         for(user in data.users){
             addMessage(user,'user');

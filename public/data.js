@@ -7,7 +7,7 @@ if(typeof(module) == "undefined"){
         //^(.*?)\t(.*?)\t(.*?)\t(.*?)\t(.*?)\t(.*?)\t(.*?)\t(.*?)\t(.*?)\t(.*?)\t(.*?)\t(.*?)\t(.*?)\t(.*?)\t(.*?)\t(.*?)\t(.*?)$
         //{\n\tnumber:$1,\n\tchname:'$2',\n\tjaname:'$3',\n\tenname:'$4',\n\texpansion:'$5',\n\ttype:'$6',\n\ttype2:'$7',\n\ttype3:'$8',\n\tcost:'$9',\n\tcheffect:'$10',\n\tjaeffect:'$11',\n\teneffect:'$12',\n\tchspecial:'$13',\n\tjaspecial:'$14',\n\tenspecial:'$15',\n\tremark:'$16',\n\tstage:'$17'\n},
 
-var cardsource=[
+var cardSource=[
     [{
         number:1,
         chname:'华人小姑娘「红美铃」',
@@ -92,7 +92,7 @@ var cardsource=[
         stage:'ex',
         use:(user,f)=>{
             user.money += 2;
-            if(user.actionArea.length>2){
+            if(user.actionUsed>2){
                 f.drawCards(user,1);
                 user.action += 1;
             }
@@ -2631,4 +2631,4 @@ var cardsource=[
         vp:-1
     }],
 ];
-module.exports = cardsource;
+module.exports = cardSource;
