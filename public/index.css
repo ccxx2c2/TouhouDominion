@@ -151,7 +151,12 @@ body {
 .chosen {
 	border: white 3px solid;
   cursor: pointer;
-  bottom: 30px;
+}
+.cardsFront>.chosen {
+	border: white 5px solid;
+}
+#cardInHand>.chosen {
+   bottom: 30px;
 }
 
 .backdrop {
@@ -171,7 +176,7 @@ body {
 }
 .myModal {
   z-index: 1050;
-  position: relative;
+  position: absolute;
   width: 50%;
-  left: 25%;
+  left: 20%;
 }

@@ -115,7 +115,7 @@ socket.on('verified', (data) => {
 
         $("#room").text(`room#${room} `);
         $("#sidebar").html("<span style='font-weight:bold;'>用户列表：</span><br />");
-        for(let user in data.users){
+        for(let user of data.users){
             addMessage(user,'user');
         }
     }
@@ -144,6 +144,7 @@ socket.on('startGame', (data) => {
     $("body").prepend(data.page);
     regVue(2);
     app3.supply = data.supply;
+    app3.basic = data.basic;
     app3.username = username;
 });
 

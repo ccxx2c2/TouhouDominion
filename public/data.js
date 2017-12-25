@@ -29,7 +29,6 @@ var cardSource=[
         use:(user) => {
           user.gainBuy(1);
           user.gainMoney(2);
-          return user;
         }
     },{
         number:2,
@@ -49,13 +48,11 @@ var cardSource=[
         enspecial:'',
         remark:'',
         stage:'ex',
-        use:async (user,f,socket) => {
+        use:async (user,f,that) => {
             user.gainBuy(1);
-            let that = user.actionArea[user.actionArea.length - 1];
-            let cardkey = await f.askCards(socket, that.chname, "请选择要废弃的牌", 'equal', 1, "hand");
+            let cardkey = await f.ask(user.socket, that.chname, "请选择要废弃的牌", "hand", 'equal', 1);
             user.gainMoney(Number(user.hand[cardkey[0]].cost));
             user.trash(cardkey,'hand');
-            return user;
         }
     },{
         number:3,
@@ -99,7 +96,6 @@ var cardSource=[
                 user.draw(1);
                 user.gainAction(1);
             }
-            return user;
         }
     },{
         number:5,
@@ -176,7 +172,6 @@ var cardSource=[
         use:(user,f)=>{
             user.draw(2);
             user.gainAction(1);
-            return user;
         }
     },{
         number:9,
@@ -201,7 +196,6 @@ var cardSource=[
             user.gainAction(1);
             user.gainBuy(1);
             user.gainMoney(1);
-            return user;
         }
     },{
         number:10,
@@ -220,7 +214,21 @@ var cardSource=[
         jaspecial:'',
         enspecial:'',
         remark:'',
-        stage:'ex'
+        stage:'ex',
+        use:false,
+        vp:0,
+        onGain:(user,f,that)=>{
+            user.onGain[that.id] = user.onLost[that.id] = {
+                card:that,
+                func:(user,f,that)=>{
+                  if(user.cardAmount / 10 !== that.vp){
+                      user.vp -= that.vp;
+                      that.vp = Math.floor(user.cardAmount / 10);
+                      user.vp += that.vp;
+                  }
+                }
+            };
+        },
     },{
         number:11,
         chname:'冻符「完美冻结」',
@@ -241,15 +249,12 @@ var cardSource=[
         stage:'2',
         use:(user,f)=>{
             user.draw(2);
-            return user;
         },
-        reaction:async (user,f,socket)=>{
-            let that = user.actionArea[user.actionArea.length - 1];
-            if(await f.askyn(socket,that.chname,"是否展示"+that.chname+"并免收伤害影响？")){
+        onAction:async (user,f,that)=>{
+            if(await f.ask(user.socket,that.chname,`是否展示${that.chname}并免受攻击影响？`, 'yn')){
               user.affect = false;
               that.shown = true;
             }
-            return user;
         }
     },{
         number:12,
@@ -269,14 +274,12 @@ var cardSource=[
         enspecial:'',
         remark:'',
         stage:'2',
-        use:async (user,f,socket)=>{
+        use:async (user,f,that)=>{
             user.gainMoney(2);
-            let that = user.actionArea[user.actionArea.length - 1];
-            if(await f.askyn(socket,that.chname,"是否弃置牌堆所有牌？")){
+            if(await f.ask(user.socket,that.chname,"是否弃置牌堆所有牌？", 'yn')){
               user.drop('all','deck');
-              f.sendRep(socket,user,socket.username + "弃掉了所有手牌");
+              f.sendRep(user.socket,user,user.socket.username + "弃掉了所有手牌");
             }
-            return user;
         }
     },{
         number:13,
@@ -296,17 +299,16 @@ var cardSource=[
         enspecial:'',
         remark:'',
         stage:'自机',
-        use:async (user,f,socket)=>{
-            let that = user.actionArea[user.actionArea.length - 1];
+        use:async (user,f,that)=>{
             while(user.hand.length < 7 && user.deck.length + user.drops.length > 0){
                 user.draw(1);
                 if(user.hand[user.hand.length - 1].type === "行动"){
-                    if(await f.askyn(socket,that.chname,`是否弃置${user.hand[user.hand.length - 1].chname}？`)){
-                        user.drop([user.hand.length - 1],'hand');
+                    if(await f.ask(user.socket,that.chname,`是否弃置${user.hand[user.hand.length - 1].chname}？`,'yn')){
+                        user.drop([user.hand.length - 1],'hand','temp');
                     }
+                    user.drop('all','temp');
                 }
             }
-            return user;
         }
     },{
         number:14,
@@ -362,6 +364,12 @@ var cardSource=[
         enspecial:'',
         remark:'',
         stage:'2',
+        use:async (user,f,that)=>{
+            let card = await f.ask(user.socket,that.chname,"请选择要获得的费用最多为4的牌","kingdom",'equal', 1, 4);
+            card = card[0];
+            user.gainCard('drops', card.src, card.index, `获得了${card.chname}`);
+            console.log(card);
+        }
     },{
         number:17,
         chname:'知识与避世的少女「帕秋莉·诺蕾姬」',
@@ -382,7 +390,6 @@ var cardSource=[
         stage:'4、ex',
         use:(user,f)=>{
             user.draw(3);
-            return user;
         }
     },{
         number:18,
@@ -409,7 +416,6 @@ var cardSource=[
                 if(f.rooms[user.room].users[userName] === user) continue;
                 f.rooms[user.room].users[userName].draw(1);
             }
-            return user;
         }
     },{
         number:19,
@@ -433,7 +439,6 @@ var cardSource=[
             user.gainAction(2);
             user.gainBuy(1);
             user.gainMoney(2);
-            return user;
         }
     },{
         number:20,
@@ -456,7 +461,6 @@ var cardSource=[
         use:(user,f)=>{
             user.draw(1);
             user.gainAction(2);
-            return user;
         }
     },{
         number:21,
@@ -475,7 +479,16 @@ var cardSource=[
         jaspecial:'',
         enspecial:'',
         remark:'',
-        stage:'自机'
+        stage:'自机',
+        use:async (user,f,that)=>{
+            let cardkey = await f.ask(user.socket, that.chname, "请选择要废弃的牌", "hand", 'equal', 1);
+            let cost = Number(user.hand[cardkey[0]].cost) + 2;
+            user.trash(cardkey,'hand');
+            let card = await f.ask(user.socket,that.chname,`请选择要获得的费用最多为${cost}的牌`,"kingdom",'equal', 1, cost);
+            card = card[0];
+            user.gainCard('drops', card.src, card.index, `获得了${card.chname}`);
+            console.log(card);
+        }
     },{
         number:22,
         chname:'暗符「境界线」',
@@ -494,14 +507,12 @@ var cardSource=[
         enspecial:'',
         remark:'',
         stage:'1',
-        use:async (user,f,socket)=>{
+        use:async (user,f,that)=>{
             user.gainAction(1);
-            let that = user.actionArea[user.actionArea.length - 1];
-            let cardkey = await f.askCards(socket,that.chname,"请选择要弃置的牌",'any', MAX_INT,"hand");
+            let cardkey = await f.ask(user.socket,that.chname,"请选择要弃置的牌","hand",'any', MAX_INT);
             user.drop(cardkey,'hand');
             console.log(cardkey);
             user.draw(cardkey.length);
-            return user;
         }
     },{
         number:23,
@@ -520,7 +531,14 @@ var cardSource=[
         jaspecial:'',
         enspecial:'',
         remark:'',
-        stage:'自机'
+        stage:'自机',
+        use:async (user,f,that)=>{
+            user.trash([user.actionArea.indexOf(that)],'actionArea');
+            let card = await f.ask(user.socket,that.chname,`请选择要获得的费用最多为5的牌`,"kingdom",'equal', 1, 5);
+            card = card[0];
+            user.gainCard('drops', card.src, card.index, `获得了${card.chname}`);
+            console.log(card);
+        }
     },{
         number:24,
         chname:'灵符「梦想封印」',
@@ -556,7 +574,15 @@ var cardSource=[
         jaspecial:'',
         enspecial:'',
         remark:'',
-        stage:'1'
+        stage:'1',
+        use:async (user,f,that)=>{
+            let choices = await f.ask(user.socket,that.chname,"请选择以下不同的两项：","check",'equal', 2, -1,
+            ["「手牌 +1」", "「行动次数 +1」", "「购买次数 +1」", "「金钱+1」"]);
+            if(choices[0]) user.draw(1);
+            if(choices[1]) user.gainAction(1);
+            if(choices[2]) user.gainBuy(1);
+            if(choices[3]) user.gainMoney(1);
+        }
     }],
     [{
         number:1,
@@ -719,7 +745,28 @@ var cardSource=[
         jaspecial:'',
         enspecial:'',
         remark:'',
-        stage:'ex'
+        stage:'ex',
+        use:false,
+        onGain:(user,f,that)=>{
+            user.onGain[that.id] = {
+                card:that,
+                func:(user,f,that, card)=>{
+                  if(card.expansion === "基础牌" && card.number === 5){
+                      that.vp += 1;
+                      user.vp += 1;
+                  }
+                }
+            };
+            user.onLost[that.id] = {
+                card:that,
+                func:(user,f,that, card)=>{
+                  if(card.expansion === "基础牌" && card.number === 5){
+                      that.vp -= 1;
+                      user.vp -= 1;
+                  }
+                }
+            };
+        },
     },{
         number:10,
         chname:'诅咒「魔彩光的上海人偶」',
@@ -792,13 +839,11 @@ var cardSource=[
         enspecial:'',
         remark:'',
         stage:'4',
-        use:async (user,f,socket)=>{
+        use:async (user,f,that)=>{
             user.draw(3);
-            let that = user.actionArea[user.actionArea.length - 1];
-            let cardkey = await f.askCards(socket,that.chname,"请选择要放回牌堆顶的牌",'equal', 1,"hand");
+            let cardkey = await f.ask(user.socket,that.chname,"请选择要放回牌堆顶的牌","hand",'equal', 1);
             user.drop(cardkey,'hand','deck','top');
             console.log(cardkey);
-            return user;
         }
     },{
         number:14,
@@ -818,14 +863,12 @@ var cardSource=[
         enspecial:'',
         remark:'',
         stage:'4',
-        use:async (user,f,socket)=>{
+        use:async (user,f,that)=>{
             user.draw(3);
             user.gainAction(1);
-            let that = user.actionArea[user.actionArea.length - 1];
-            let cardkey = await f.askCards(socket,that.chname,"请选择要弃置的牌",'equal', 3, "hand");
+            let cardkey = await f.ask(user.socket,that.chname,"请选择要弃置的牌", "hand",'equal', 3);
             user.drop(cardkey,'hand');
             console.log(cardkey);
-            return user;
         }
     },{
         number:15,
@@ -849,7 +892,6 @@ var cardSource=[
             user.draw(1);
             user.gainAction(2);
             user.gainMoney(1);
-            return user;
         }
     },{
         number:16,
@@ -868,7 +910,17 @@ var cardSource=[
         jaspecial:'',
         enspecial:'',
         remark:'',
-        stage:'3'
+        stage:'3',
+        use: async (user,f,that) =>{
+          let userOrder = f.rooms[user.room].userOrder;
+          let lastUser = (userOrder.indexOf(user.socket.username) + userOrder.length - 1) % userOrder.length;
+          lastUser = f.rooms[user.room].users[userOrder[lastUser]];
+          console.log(lastUser.socket.username);
+          let card = await f.ask(user.socket,that.chname,"请选择你要获得的牌","kingdom","equal",1,6,
+          lastUser.buyed);
+          card = card[0];
+          user.gainCard('drops', card.src, card.index, `获得了${card.chname}`);
+        },
     },{
         number:17,
         chname:'赏花便在神社',
@@ -889,7 +941,6 @@ var cardSource=[
         stage:'ed',
         use:(user)=>{
             user.gainMoney(2);
-            return user;
         },
         vp:2
     },{
@@ -910,16 +961,14 @@ var cardSource=[
         enspecial:'',
         remark:'',
         stage:'4',
-        use:async (user,f,socket)=>{
-            let that = user.actionArea[user.actionArea.length - 1];
+        use:async (user,f,that)=>{
             user.draw(1);
             user.gainAction(2);
-            if(await f.askyn(socket,that.chname,"是否移出此牌？")){
+            if(await f.ask(user.socket,that.chname,"是否移出此牌？",'yn')){
               user.trash([user.actionArea.indexOf(that)],'actionArea');
-              f.sendRep(socket,user,socket.username + "废弃了" + that.chname);
+              f.sendRep(user.socket,user,`${user.socket.username}废弃了${that.chname}`);
               user.gainMoney(2);
             }
-            return user;
         }
     },{
         number:19,
@@ -975,12 +1024,10 @@ var cardSource=[
         enspecial:'',
         remark:'',
         stage:'ph',
-        use:async (user,f,socket)=>{
-            let that = user.actionArea[user.actionArea.length - 1];
-            let cardkey = await f.askCards(socket,that.chname,"请选择要废弃的牌",'lte', 4,"hand");
+        use:async (user,f,that)=>{
+            let cardkey = await f.ask(user.socket,that.chname,"请选择要废弃的牌","hand",'lte', 4);
             user.trash(cardkey,'hand');
             console.log(cardkey);
-            return user;
         }
     },{
         number:22,
@@ -999,7 +1046,22 @@ var cardSource=[
         jaspecial:'',
         enspecial:'',
         remark:'',
-        stage:'1'
+        stage:'1',
+        use: async (user,f,that)=>{
+            user.draw(1);
+            user.gainAction(1);
+            let cardkey = await f.ask(user.socket,that.chname,"弃置1张牌，+1行动；或不弃置牌并跳过此选项","hand",'lte', 1);
+            if(cardkey[0] !== undefined){
+              user.drop(cardkey, "hand");
+              user.gainAction(1);
+            }
+            cardkey = await f.ask(user.socket,that.chname,"弃置1张牌，+1购买；或不弃置牌并跳过此选项","hand",'lte', 1);
+            if(cardkey[0] !== undefined){
+              user.drop(cardkey, "hand");
+              user.gainBuy(1);
+            }
+            console.log(cardkey);
+        }
     },{
         number:23,
         chname:'幽明结界',
@@ -1216,7 +1278,21 @@ var cardSource=[
         jaspecial:'',
         enspecial:'',
         remark:'',
-        stage:'3'
+        stage:'3',
+        use: async (user,f,that)=>{
+            user.gainBuy(1);
+            let cardkey = await f.ask(user.socket,that.chname,"弃置任意张手牌，每张+1手牌","hand",'any', MAX_INT);
+            if(cardkey[0] !== undefined){
+              user.drop(cardkey, "hand");
+              user.draw(cardkey.length);
+            }
+            cardkey = await f.ask(user.socket,that.chname,"弃置任意张手牌，每张+1钱","hand",'any', MAX_INT);
+            if(cardkey[0] !== undefined){
+              user.drop(cardkey, "hand");
+              user.gainMoney(cardkey.length);
+            }
+            console.log(cardkey);
+        }
     },{
         number:10,
         chname:'地上兔「因幡帝」',
@@ -2631,21 +2707,21 @@ var cardSource=[
         expansion:'基础牌',
         type:'资源',
         cost:0,
-        use:(user)=>{user.gainMoney(1); return user;}
+        use:(user)=>{user.gainMoney(1); }
     },{
         number:2,
         chname:'奉纳米',
         expansion:'基础牌',
         type:'资源',
         cost:3,
-        use:(user)=>{user.gainMoney(2); return user;}
+        use:(user)=>{user.gainMoney(2);}
     },{
         number:3,
         chname:'御神酒',
         expansion:'基础牌',
         type:'资源',
         cost:6,
-        use:(user)=>{user.gainMoney(3); return user;}
+        use:(user)=>{user.gainMoney(3); }
     },{
         number:4,
         chname:'神社',

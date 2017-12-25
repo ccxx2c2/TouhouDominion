@@ -117,6 +117,7 @@ class Room{
 
 class User{
     constructor(props){
+        this.socket = props.socket || '';
         this.room = props.room || "";
         this.status = props.status || "waiting"; //waiting, prepared, gaming,  watching
         this.hand = props.hand || [];
@@ -130,14 +131,57 @@ class User{
         this.affact = props.affact || false;//whether affect by attack
         this.aCardUsing = props.aCardUsing || false;
         this.actionUsed = props.actionUsed || 0;
+        this.onGain = props.onGain || {};
+        this.onLost = props.onLost || {};
+        this.cardAmount = props.cardAmount || 0;
+        this.temp = props.temp || [];
+        this.buyed = props.buyed || [];
     }
 
-    gainCard(card, to){
+    gainCard(to, src, index, content){
+        let room = rooms[this.room];
+        let card = new DomCard(room[src][index]);
+        card.no = room[src + "Total"][index] - room[src + "Remain"][index] + 1;
+        card.id = (src === 'basic' ? 20 : 0) * 100000 + index * 100 + card.no;
+        room[src + "Remain"][index] -= 1;
+        if(content !== undefined){
+          console.log("in gain card");
+          console.log(card.chname, card.vp, this.money, card.cost);
+        }
         if(card.vp !== undefined){
             this.vp += card.vp;
         }
-        this[to].push(card);
 
+        //affect ongain effects
+        if(card.onGain !== undefined){
+            card.onGain(this,exFunctions,card);
+        }
+        this[to].push(card);
+        this.cardAmount += 1;
+        for(let cardid in this.onGain){
+          let eff = this.onGain[cardid];
+          eff.func(this, exFunctions, eff.card, card);
+        }
+
+        // send content
+        if(content !== undefined){
+          generalStatus(this.socket);
+          sendRep(this.socket, this, content);
+        }
+        // judge if game end
+        if(room[src + "Remain"][index] === 0){
+            let usedup = 0;
+            room.basicRemain.forEach((val) => {
+                if(val === 0) usedup += 1;
+            });
+            room.supplyRemain.forEach((val) => {
+                if(val === 0) usedup += 1;
+            });
+              if(room.basicRemain[5] === 0 || usedup >= 3) {
+                endGame(socket.room);
+              return;
+            }
+        }
     }
 
     gainMoney(amount){
@@ -166,13 +210,9 @@ class User{
         else{
             this.hand = this.hand.concat(this.deck.splice(0,amount));
         }
-        for(let socket of rooms[this.room].sockets){
-            console.log(socket.username);
-            if(rooms[this.room].users[socket.username] !== this) continue;
-            socket.emit("statusUpdate", {
+        this.socket.emit("statusUpdate", {
               hand: this.hand,
-            })
-        }
+        });
     }
 
     drop(amount, from, to = 'drops', place = 'bottom'){
@@ -180,9 +220,8 @@ class User{
         if(amount == 'all'){
             this[to] = this[to].concat(this[from]);
             this[from] = [];
-            return;
         }
-        if(Array.isArray(amount)){
+        else if(Array.isArray(amount)){
           let myamount = amount.slice();
           myamount.sort((a,b)=>{return a<b;});
           myamount.forEach((index) =>{
@@ -195,6 +234,9 @@ class User{
               }
           });
         }
+        this.socket.emit("statusUpdate", {
+              drops: this.drops,
+        });
     }
 
     trash(amount,from){
@@ -205,10 +247,15 @@ class User{
                 if(card.vp !== undefined){
                     this.vp -= card.vp;
                 }
+                delete this.onGain[card.id];
+                delete this.onLost[card.id];
+                for(let cardid in this.onLost){
+                  let eff = this.onLost[cardid];
+                  eff.func(this, exFunctions, eff.card, card);
+                }
             });
             room.trash = room.trash.concat(this[from]);
             this[from] = [];
-            return;
         }
         else if(Array.isArray(amount)){
           console.log(amount);
@@ -216,12 +263,20 @@ class User{
           myamount.sort( (a,b) => a<b );
           myamount.forEach( index =>{
               console.log(index, this[from][index].chname, this[from][index].no);
+              let card = this[from][index];
               if(this[from][index].vp !== undefined){
                 this.vp -= this[from][index].vp;
+              }
+              delete this.onGain[card.id];
+              delete this.onLost[card.id];
+              for(let cardid in this.onLost){
+                let eff = this.onLost[cardid];
+                eff.func(this, exFunctions, eff.card, card);
               }
               room.trash.push(this[from].splice(index, 1)[0]);
           });
         }
+
     }
 }
 
@@ -230,6 +285,7 @@ class Card{
         this.expansion = props.expansion || "";
         this.number = props.number || 0;
         this.no = props.no || 0;
+        this.id = props.id || -1;
         this.used = props.used || false;
         this.amount = props.amount || 0;
         this.shown = props.shown || false;
@@ -257,7 +313,9 @@ class DomCard extends Card{
         this.remark = props.remark || '' ;
         this.stage = props.stage || '' ;
         this.vp = props.vp || 0 ;
-        this.use = props.use || '' ;
+        this.use = props.use || undefined ;
+        this.onGain = props.onGain || undefined;
+        this.onAction = props.onAction || undefined;
     }
 }
 
@@ -269,7 +327,7 @@ function generateCard(room, limit, type){
     cardData.forEach( (array, index) => {
       array.forEach((info, i) => {
           if(room.noin[index].includes(i + 1)
-          || type === 'available' && typeof(info.use) != 'function'){
+          || type === 'available' && typeof(info.use) === 'undefined'){
               return;
           }
           let card = new Card({
@@ -325,12 +383,6 @@ function initialGame(roomNum){
     let room = rooms[roomNum];
     room.paging = "battle";
 
-    for(let socket of room.sockets){
-        socket.emit('startGame',{
-            page: pages[1],
-            supply: room.supply
-        });
-    }
 
     // change basic card total by players.length
     if(Object.keys(room.users).length == 2){
@@ -357,16 +409,21 @@ function initialGame(roomNum){
     });
     getCard(room.basic, tmp, tmp.length);
 
+    for(let socket of room.sockets){
+        socket.emit('startGame',{
+            page: pages[1],
+            supply: room.supply,
+            basic: room.basic
+        });
+    }
+
     // gain start card
     for(let userName in room.users){
         let user = room.users[userName];
         for(let cardkey in room.startCards){
             let card = room.startCards[cardkey];
             for(let i = 0;i < card.amount;i += 1){
-                let tmp = new DomCard(room.basic[card.number - 1]);
-                tmp.no = room.basicTotal[card.number-1] - room.basicRemain[card.number-1] + 1;
-                user.gainCard(tmp, "deck");
-                room.basicRemain[card.number-1] -= 1;
+                user.gainCard("deck", "basic", card.number - 1);
             }
         }
         user.deck.shuffle();
@@ -405,55 +462,74 @@ function initialGame(roomNum){
     }
 }
 
-function askyn(socket,title,content){
-  var y;
-  console.log('in askyn');
-  socket.askingyn = true;
-  generalStatus(socket);
-  socket.emit('askyn',{
-    title:title,
-    content:content,
-  });
-  return new Promise( (resolve,reject) =>{
-      socket.once('sending yn', (yn) =>{
-          console.log('in sending yn');
-          if(!socket.askingyn || socket.username != rooms[socket.room].nowPlayer) return;
-          y = yn == 'y';
-          console.log('y: '+y);
-          socket.askingyn = false;
-          resolve(y);
-      });
-  });
-}
-function askCards(socket,title,content,type,amount,from){
-    console.log('in askCard');
-    socket.askingCard = true;
+function ask(socket,title,content,from,type,amount,cost,choices){
+    console.log('in ask');
+    socket.asking = true;
     generalStatus(socket);
-    socket.emit('askCards',{
+    socket.emit('ask',{
       title:title,
       content:content,
       amount:amount,
       from:from,
+      cost:cost,
+      choices:choices
     });
     return new Promise( (resolve,reject) =>{
-        socket.once('sending cards', (cards) =>{
-            console.log('in sending cards');
-            if(!socket.askingCard || socket.username != rooms[socket.room].nowPlayer) return;
-            console.log('cards: ',cards);
-            if(!Array.isArray(cards)) cards = [];
-            if((type === 'equal' || type === 'bt') && cards.length < amount){
-                tmpCards = [];
-                rooms[socket.room].users[socket.username][from].forEach((e,i)=>{
-                    if(!(i in cards)) tmpCards.push(i);
-                });
-                tmpCards.shuffle();
-                cards = cards.concat(tmpCards.slice(0,amount - cards.length));
+        socket.once('answer', (data) =>{
+            console.log('in answering');
+            if(!socket.asking || socket.username != rooms[socket.room].nowPlayer) return;
+            if(from === 'yn'){
+              socket.asking = false;
+              resolve(data === 'y');
             }
-            if(cards.length > amount){
-                cards = cards.slice(0,amount);
+            else if(from === 'check'){
+              if(data.length != choices.length) return;
+              socket.asking = false;
+              for(let i = data.length - 1; i >= 0; i -= 1){
+                if(amount < 0){
+                    data[i] = false;
+                }
+                if(data[i]){
+                    amount -= 1;
+                }
+              }
+              resolve(data);
             }
-            socket.askingCard = false;
-            resolve(cards);
+            else if(from === 'hand'){
+              let cards = [];
+              if(Array.isArray(data)) cards = data;
+              // 随机 补齐卡片
+              if((type === 'equal' || type === 'bt') && cards.length < amount){
+                  let tmpCards = [];
+                  rooms[socket.room].users[socket.username][from].forEach((e,i)=>{
+                      if(!(i in cards)) tmpCards.push(i);
+                  });
+                  tmpCards.shuffle();
+                  cards = cards.concat(tmpCards.slice(0,amount - cards.length));
+              }
+              // 去掉多余卡片
+              if(cards.length > amount){
+                  cards = cards.slice(0,amount);
+              }
+              socket.asking = false;
+              resolve(cards);
+            }
+            else if(from === 'kingdom' || from === 'supply' || from === 'basic'){
+              socket.asking = false;
+              console.log(data);
+              data.filter((card) => {
+                return ((from === 'kingdom' || from === card.src)
+                && rooms[socket.room][card.src][card.index].cost <= cost) ;
+              });
+              if(data.length > amount){
+                data = data.slice(0, amount);
+              }
+              data.forEach((card)=>{
+                card.chname = rooms[socket.room][card.src][card.index].chname;
+              });
+              resolve(data);
+              //data:{src,index,chname}
+            }
         });
     });
 }
@@ -509,8 +585,7 @@ function sendRep(socket,user,content){
   });
 }
 var exFunctions = {
-  askyn:askyn,
-  askCards:askCards,
+  ask:ask,
   generalStatus:generalStatus,
   sendRep:sendRep,
   rooms:rooms,
@@ -520,12 +595,10 @@ io.on('connection',(socket) =>{
     // socket.username
     // socket.paging
     // socket.room
-    // socket.askingyn
-    // socket.askingCard
+    // socket.asking
     socket.paging = "login"; // login, waiting, battle
     socket.room = -1;
-    socket.askingyn = false;
-    socket.askingCard = false;
+    socket.asking = false;
 
     console.log(`${new Date().toLocaleString()} a user connected`);
 
@@ -607,7 +680,8 @@ io.on('connection',(socket) =>{
             rooms[socket.room] = new Room({host:socket.username});
         }
         let room = rooms[socket.room];
-        room.users[socket.username] = new User({status:"waiting",room:socket.room});
+        room.users[socket.username] = new User({status:"waiting",room:socket.room,socket:socket});
+        console.log(room.users[socket.username]);
         room.sockets.push(socket);
 
         room.show();
@@ -617,7 +691,7 @@ io.on('connection',(socket) =>{
 
         socket.emit('verified',{
             valid: true,
-            users: room.users,
+            users: Object.keys(room.users),
             page: data.type === "new"? pages[0] : undefined,
             roomhost: rooms[socket.room].host
         });
@@ -698,6 +772,10 @@ io.on('connection',(socket) =>{
             room.nowPlayerPoint ++;
             room.nowPlayer = room.userOrder[room.nowPlayerPoint % room.userOrder.length];
         }
+        // Buy
+        if(room.nowStage % 3 === 1){
+          user.buyed = [];
+        }
         // Cleanup
         if(room.nowStage % 3 == 2){
             user.actionArea.forEach((card,index)=>{
@@ -747,8 +825,9 @@ io.on('connection',(socket) =>{
           user.action -= 1;
           user.actionUsed ++;
         }
-        user = room.users[socket.username] = await usingCard.use(user,exFunctions,socket);
-        console.log('used');
+        await usingCard.use(user,exFunctions,usingCard);
+
+        console.log("used");
 
         user.aCardUsing = false;
         generalStatus(socket);
@@ -763,37 +842,17 @@ io.on('connection',(socket) =>{
         let src = data.src;
         if(socket.username != room.nowPlayer) return;
 
-        buyingCard = room[src][index];
-        no = room[src + "Total"][index] - room[src + "Remain"][index] + 1;
-        if(buyingCard === undefined
-        || user.money < buyingCard.cost
+        if(room[src][index] === undefined
+        || user.money < room[src][index].cost
         || user.buy < 1
         || room[src + "Remain"][index] < 1) return;
-        user.money -= buyingCard.cost;
+        user.money -= room[src][index].cost;
         user.buy -= 1;
-        room[src + "Remain"][index] -= 1;
-        buyingCard = new DomCard(buyingCard);
-        buyingCard.no = no;
 
         console.log(`${new Date().toLocaleString()} in room ${socket.room}`);
         console.log("in buying Card");
-        console.log(buyingCard.chname, buyingCard.no, buyingCard.vp, user.money, buyingCard.cost);
-        user.gainCard(buyingCard, "drops");
-
-        generalStatus(socket);
-        sendRep(socket, user, `${room.nowPlayer} 购买了 ${buyingCard.chname}`);
-
-        let usedup = 0;
-        room.basicRemain.forEach((val) => {
-            if(val === 0) usedup += 1;
-        });
-        room.supplyRemain.forEach((val) => {
-            if(val === 0) usedup += 1;
-        });
-          if(room.basicRemain[5] === 0 || usedup >= 3) {
-            endGame(socket.room);
-          return;
-        }
+        user.gainCard("drops", src, index, `${room.nowPlayer} 购买了 ${room[src][index].chname}`);
+        user.buyed.push({src:src,index:index});
     });
 
     socket.on('disconnect', () => { //emit userleft

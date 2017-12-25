@@ -1,28 +1,20 @@
 <div class="backdrop" style="display:none"></div>
 <div class="container" id="room_instance">
     <div id="modal_instance">
-        <div id="ynModal" class="panel panel-info myModal" style="display:none">
+        <div id="askModal" class="panel panel-info myModal" style="display:none">
           <div class="panel-heading">
             <h3 class="panel-title">{{modal_title}}</h3>
           </div>
           <div class="panel-body">
             {{modal_content}}
+            <template v-for = "choice in modal_choices" v-if="modal_from === 'check'">
+              <br /><input type="checkbox" :name="choice">{{choice}}</input>
+            </template>
           </div>
           <div class="panel-footer">
-              <button type="button" class="btn btn-primary" @click="sendyn('y')">是</button>
-              <button type="button" class="btn btn-default" @click="sendyn('n')">否</button>
-          </div>
-        </div>
-
-        <div id="cardsModal" class="panel panel-info myModal" style="display:none">
-          <div class="panel-heading">
-            <h3 class="panel-title">{{modal_title}}</h3>
-          </div>
-          <div class="panel-body">
-            {{modal_content}}
-          </div>
-          <div class="panel-footer">
-              <button type="button" class="btn btn-primary" @click="sendCards()">确认</button>
+              <button type="button" class="btn btn-primary" v-if="modal_from === 'yn'" @click="sendAnswer('y')">是</button>
+              <button type="button" class="btn btn-default" v-if="modal_from === 'yn'" @click="sendAnswer('n')">否</button>
+              <button type="button" class="btn btn-primary" v-if="modal_from === 'hand' || modal_from === 'check' || modal_from === 'kingdom' || modal_from === 'supply' || modal_from === 'basic'" @click="sendAnswer()">确认</button>
           </div>
         </div>
     </div>
@@ -35,7 +27,8 @@
                   </span>
                   <img :class="'basicCard '+ ((card.cost<=nowMoney) &&
                   (nowPlayer == username) && (nowStage == 'Buy') && (nowBuy > 0)
-                   && basicRemain[index]>0?'cardActive':'')"
+                   && basicRemain[index]>0?'cardActive':'' + ((nowPlayer == username) && aCardUsing && (modal_from === 'basic' || modal_from === 'kingdom') && !(card.chosen) && (card.cost <= modal_cost) && (typeof(modal_choices['basic']) === 'undefined' || modal_choices['basic'][index])? 'selectable ' : '')
+                   +((nowPlayer == username) && aCardUsing && (card.chosen) ? 'chosen ' : ''))"
                    :src="filename(card)" :alt="name(card)" @click="buy(index,'basic')"/>
               </div>
               <div v-if="index%2===1" class="clearfix visible-block"></div>
@@ -58,7 +51,8 @@
                               <img :class="'cards img-responsive col-xs-2 col-sm-2 col-md-2 col-lg-2 '
                               + ((card.cost<=nowMoney) && (nowPlayer == username)
                               && (nowStage == 'Buy')&& (nowBuy > 0) &&
-                              supplyRemain[index]>0?'cardActive':'') "
+                              supplyRemain[index]>0?'cardActive':'' + ((nowPlayer == username) && aCardUsing && (modal_from === 'supply' || modal_from === 'kingdom') && !(card.chosen) && (card.cost <= modal_cost) && (typeof(modal_choices['supply']) === 'undefined' || modal_choices['supply'][index]) ? 'selectable ' : '')
+                              +((nowPlayer == username) && aCardUsing && (card.chosen) ? 'chosen ' : '')) "
                               data-container="body" data-toggle="popover" data-placement="bottom"
                               data-trigger='hover' :data-original-title="title(card)"
                               data-html="true" :data-content="description(card).split('\n').join('<br>')"
