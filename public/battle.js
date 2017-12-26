@@ -232,12 +232,14 @@ socket.on('ask', (data) =>{
    app3.modal_choices = data.choices;//{src,index}
    app3.modal_cards = [];
    $('#askModal').css('display','');
+   if(data.from === 'hand'){
+     if(data.choices != undefined)
+        app3.modal_choices = app3.myHand.map(data.choices);
+   }
    if(data.from === 'kingdom' || data.from === 'supply' || data.from === 'basic'){
      $("#askModal").css("top","70%");
-     app3.modal_choices = {};
-     for(let info in data.choices){
-       if(app3.modal_choices[info.src] === undefined)
-          app3.modal_choices[info.src] = [];
+     app3.modal_choices = {supply:[],basic:[]};
+     for(let info of data.choices){
        app3.modal_choices[info.src][info.index] = true;
      }
    }

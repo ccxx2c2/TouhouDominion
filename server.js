@@ -135,16 +135,16 @@ class User{
         this.onLost = props.onLost || {};
         this.cardAmount = props.cardAmount || 0;
         this.temp = props.temp || [];
-        this.buyed = props.buyed || [];
+        this.gained = props.gained || [];//{src,index,type}
     }
 
-    gainCard(to, src, index, content){
+    gainCard(to, src, index, type){
         let room = rooms[this.room];
         let card = new DomCard(room[src][index]);
         card.no = room[src + "Total"][index] - room[src + "Remain"][index] + 1;
         card.id = (src === 'basic' ? 20 : 0) * 100000 + index * 100 + card.no;
         room[src + "Remain"][index] -= 1;
-        if(content !== undefined){
+        if(type !== undefined){
           console.log("in gain card");
           console.log(card.chname, card.vp, this.money, card.cost);
         }
@@ -164,9 +164,14 @@ class User{
         }
 
         // send content
-        if(content !== undefined){
+        if(type !== undefined){
+          let content = type === 'buy'
+          ? `${room.nowPlayer} 购买了 ${room[src][index].chname}`
+          : type === 'gain'
+          ? `获得了${card.chname}` : undefined ;
           generalStatus(this.socket);
           sendRep(this.socket, this, content);
+          this.gained.push({src:src,index:index,type:type});
         }
         // judge if game end
         if(room[src + "Remain"][index] === 0){
@@ -768,13 +773,13 @@ io.on('connection',(socket) =>{
         // Action
         if(room.nowStage % 3 === 0){
             [user.money, user.action, user.buy, user.actionUsed] = [0, 1, 1, 0];
-
+            user.gained = [];
             room.nowPlayerPoint ++;
             room.nowPlayer = room.userOrder[room.nowPlayerPoint % room.userOrder.length];
         }
         // Buy
         if(room.nowStage % 3 === 1){
-          user.buyed = [];
+
         }
         // Cleanup
         if(room.nowStage % 3 == 2){
@@ -851,8 +856,7 @@ io.on('connection',(socket) =>{
 
         console.log(`${new Date().toLocaleString()} in room ${socket.room}`);
         console.log("in buying Card");
-        user.gainCard("drops", src, index, `${room.nowPlayer} 购买了 ${room[src][index].chname}`);
-        user.buyed.push({src:src,index:index});
+        user.gainCard("drops", src, index,'buy');
     });
 
     socket.on('disconnect', () => { //emit userleft

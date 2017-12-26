@@ -27,7 +27,7 @@
                   </span>
                   <img :class="'basicCard '+ ((card.cost<=nowMoney) &&
                   (nowPlayer == username) && (nowStage == 'Buy') && (nowBuy > 0)
-                   && basicRemain[index]>0?'cardActive':'' + ((nowPlayer == username) && aCardUsing && (modal_from === 'basic' || modal_from === 'kingdom') && !(card.chosen) && (card.cost <= modal_cost) && (typeof(modal_choices['basic']) === 'undefined' || modal_choices['basic'][index])? 'selectable ' : '')
+                   && basicRemain[index]>0?'cardActive':'' + ((nowPlayer == username) && aCardUsing && (modal_from === 'basic' || modal_from === 'kingdom') && !(card.chosen) && (card.cost <= modal_cost) && (modal_choices['basic'][index])? 'selectable ' : '')
                    +((nowPlayer == username) && aCardUsing && (card.chosen) ? 'chosen ' : ''))"
                    :src="filename(card)" :alt="name(card)" @click="buy(index,'basic')"/>
               </div>
@@ -51,7 +51,7 @@
                               <img :class="'cards img-responsive col-xs-2 col-sm-2 col-md-2 col-lg-2 '
                               + ((card.cost<=nowMoney) && (nowPlayer == username)
                               && (nowStage == 'Buy')&& (nowBuy > 0) &&
-                              supplyRemain[index]>0?'cardActive':'' + ((nowPlayer == username) && aCardUsing && (modal_from === 'supply' || modal_from === 'kingdom') && !(card.chosen) && (card.cost <= modal_cost) && (typeof(modal_choices['supply']) === 'undefined' || modal_choices['supply'][index]) ? 'selectable ' : '')
+                              supplyRemain[index]>0?'cardActive':'' + ((nowPlayer == username) && aCardUsing && (modal_from === 'supply' || modal_from === 'kingdom') && !(card.chosen) && (card.cost <= modal_cost) && (modal_choices['supply'][index]) ? 'selectable ' : '')
                               +((nowPlayer == username) && aCardUsing && (card.chosen) ? 'chosen ' : '')) "
                               data-container="body" data-toggle="popover" data-placement="bottom"
                               data-trigger='hover' :data-original-title="title(card)"
@@ -84,7 +84,7 @@
               <template v-for="(card,index) in myHand">
                       <img :class="'CardInHand ' + (
                       (nowPlayer == username) && ((nowStage == 'Buy') && (card.type == '资源') ||　(nowStage == 'Action') && (card.type == '行动'))
-                       ?'cardActive ':'') + ((nowPlayer == username) && aCardUsing && (modal_from == 'hand') && !(card.chosen) ? 'selectable ' : '')
+                       ?'cardActive ':'') + ((nowPlayer == username) && aCardUsing && (modal_from == 'hand') && !(card.chosen) && (typeof(modal_choices) === undefined || modal_choices[i]) ? 'selectable ' : '')
                        +((nowPlayer == username) && aCardUsing && (card.chosen) ? 'chosen ' : '')" :src="filename(card)" :alt="name(card)" @click="use(index)"
                        :style="'width: ' + myHand.length > 13 ? '5%' : myHand.length > 10 ? '8%' : '10%' "/>
                   </template>

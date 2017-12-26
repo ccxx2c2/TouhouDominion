@@ -367,7 +367,7 @@ var cardSource=[
         use:async (user,f,that)=>{
             let card = await f.ask(user.socket,that.chname,"请选择要获得的费用最多为4的牌","kingdom",'equal', 1, 4);
             card = card[0];
-            user.gainCard('drops', card.src, card.index, `获得了${card.chname}`);
+            user.gainCard('drops', card.src, card.index, 'gain');
             console.log(card);
         }
     },{
@@ -486,7 +486,7 @@ var cardSource=[
             user.trash(cardkey,'hand');
             let card = await f.ask(user.socket,that.chname,`请选择要获得的费用最多为${cost}的牌`,"kingdom",'equal', 1, cost);
             card = card[0];
-            user.gainCard('drops', card.src, card.index, `获得了${card.chname}`);
+            user.gainCard('drops', card.src, card.index, 'gain');
             console.log(card);
         }
     },{
@@ -536,7 +536,7 @@ var cardSource=[
             user.trash([user.actionArea.indexOf(that)],'actionArea');
             let card = await f.ask(user.socket,that.chname,`请选择要获得的费用最多为5的牌`,"kingdom",'equal', 1, 5);
             card = card[0];
-            user.gainCard('drops', card.src, card.index, `获得了${card.chname}`);
+            user.gainCard('drops', card.src, card.index, 'gain');
             console.log(card);
         }
     },{
@@ -748,24 +748,19 @@ var cardSource=[
         stage:'ex',
         use:false,
         onGain:(user,f,that)=>{
-            user.onGain[that.id] = {
+          let eff = (factor) => {
+            return {
                 card:that,
-                func:(user,f,that, card)=>{
-                  if(card.expansion === "基础牌" && card.number === 5){
-                      that.vp += 1;
-                      user.vp += 1;
-                  }
+                func:(user,f,that,card)=>{
+                    if(card.expansion === "基础牌" && card.number === 5){
+                        that.vp += 1 * factor;
+                        user.vp += 1 * factor;
+                    }
                 }
             };
-            user.onLost[that.id] = {
-                card:that,
-                func:(user,f,that, card)=>{
-                  if(card.expansion === "基础牌" && card.number === 5){
-                      that.vp -= 1;
-                      user.vp -= 1;
-                  }
-                }
-            };
+          };
+          user.onGain[that.id] = eff(1);
+          user.onLost[that.id] = eff(-1);
         },
     },{
         number:10,
@@ -855,7 +850,7 @@ var cardSource=[
         type2:'',
         type3:'',
         cost:'3',
-        cheffect:'手牌+3 行动次数+1 将3张牌置于弃牌区。',
+        cheffect:'手牌+3 行动次数+1 弃置3张手牌。',
         jaeffect:'　+3　カードを引く\n+1　アクション\n　カード3枚を捨て札にする。',
         eneffect:'',
         chspecial:'',
@@ -917,9 +912,10 @@ var cardSource=[
           lastUser = f.rooms[user.room].users[userOrder[lastUser]];
           console.log(lastUser.socket.username);
           let card = await f.ask(user.socket,that.chname,"请选择你要获得的牌","kingdom","equal",1,6,
-          lastUser.buyed);
+          lastUser.gained);
           card = card[0];
-          user.gainCard('drops', card.src, card.index, `获得了${card.chname}`);
+          if(lastUser.gained.includes(card))
+            user.gainCard('drops', card.src, card.index, 'gain');
         },
     },{
         number:17,
@@ -1152,7 +1148,7 @@ var cardSource=[
         jaspecial:'あなたがこのカードをプレイエリアから捨て札にするとき、あなたがこのターン勝利点カードを購入していない場合、このカードをデッキの一番上においてもよい。',
         enspecial:'',
         remark:'',
-        stage:'6b'
+        stage:'6b'//.filter((card)=>{return card.type === 'buy' && card.src === 'basic' && xx > card.index > xx})
     },{
         number:3,
         chname:'狂气的月兔「铃仙·优昙华院·因幡」',
@@ -1224,7 +1220,18 @@ var cardSource=[
         jaspecial:'',
         enspecial:'',
         remark:'',
-        stage:'3'
+        stage:'3',
+        use:async (user,f,that)=>{
+            let choices = await f.ask(user.socket,that.chname,"请选择以下不同的两项：","check",'equal', 2, -1,
+            ["「手牌 +1」", "「行动次数 +1」", "「购买次数 +1」", "「金钱+1」"]);
+            if(choices[0]) user.draw(2);
+            if(choices[1]) user.gainMoney(2);
+            if(choices[2]){
+                  let cardkey = await f.ask(user.socket,that.chname,"请选择要废弃的牌","hand",'equal', 2);
+                  user.trash(cardkey,'hand');
+                  console.log(cardkey);
+            }
+        }
     },{
         number:7,
         chname:'幻想的结界组',
@@ -1242,7 +1249,15 @@ var cardSource=[
         jaspecial:'',
         enspecial:'',
         remark:'',
-        stage:'自机'
+        stage:'自机',
+        use:async (user,f,that)=>{
+            let cardkey = await f.ask(user.socket, that.chname, "请选择要废弃的牌", "hand", 'equal', 1);
+            user.trash(cardkey,'hand');
+            let card = await f.ask(user.socket,that.chname,`请选择要获得的费用最多为5的牌`,"kingdom",'equal', 1, 5);
+            card = card[0];
+            user.gainCard('drops', card.src, card.index, 'gain');
+            console.log(card);
+        }
     },{
         number:8,
         chname:'新史「新幻想史 -现代史-」',
@@ -1260,7 +1275,19 @@ var cardSource=[
         jaspecial:'',
         enspecial:'',
         remark:'',
-        stage:'ex'
+        stage:'ex'/*,
+        use:async (user,f,that)=>{
+            let cardkey = await f.ask(user.socket, that.chname, "请选择要废弃的牌", "hand", 'equal', 1, Max_INT,
+            (card)=>{return card.type === '资源';});
+            if(user.hand[cardkey[0]].type !== '资源'){revolve();}
+            let cost = Number(user.hand[cardkey[0]].cost) + 3;
+            user.trash(cardkey,'hand');
+            let card = await f.ask(user.socket,that.chname,`请选择要获得的费用最多为${cost}的资源牌`,"kingdom",'equal', 1, cost,
+            );
+            card = card[0];
+            user.gainCard('drops', card.src, card.index, 'gain');
+            console.log(card);
+        }*/
     },{
         number:9,
         chname:'知识与历史的半兽「上白泽慧音」',
@@ -1400,7 +1427,19 @@ var cardSource=[
         jaspecial:'このカードを獲得するとき、他のプレイヤーは全員、マイナスカード１枚を獲得する。',
         enspecial:'',
         remark:'',
-        stage:'6a'
+        stage:'6a',
+        use:async (user,f,that)=>{
+            user.gainMoney(1);
+            if(await f.ask(user.socket,that.chname,"是否将一张「お賽銭」加入手牌？",'yn')){
+              user.gainCard('hand','basic', 0, 'gain');
+            }
+        }
+        onGain:(user,f,that) =>{
+          for(let otherUser of f.rooms[user.room].users){
+              if(otherUser.socket.username === user.socket.username) continue;
+              otherUser.gainCard('drops','basic',6,'gain');
+          }
+        }
     },{
         number:16,
         chname:'蓬莱人的外形「藤原妹红」',
@@ -1851,7 +1890,16 @@ var cardSource=[
         jaspecial:'',
         enspecial:'',
         remark:'',
-        stage:'5'
+        stage:'5',
+        use:async (user,f,that)=>{
+            let cardkey = await f.ask(user.socket, that.chname, "请选择要废弃的牌", "hand", 'equal', 1);
+            let cost = Number(user.hand[cardkey[0]].cost) + 3;
+            user.trash(cardkey,'hand');
+            let card = await f.ask(user.socket,that.chname,`请选择要获得的费用最多为${cost}的牌`,"kingdom",'equal', 1, cost);
+            card = card[0];
+            user.gainCard('drops', card.src, card.index, 'gain');
+            console.log(card);
+        }
     },{
         number:11,
         chname:'秘神流雏「键山雏」',
@@ -1887,7 +1935,14 @@ var cardSource=[
         jaspecial:'勝利点　２',
         enspecial:'',
         remark:'',
-        stage:'6'
+        stage:'6',
+        vp:2,
+        use:async (user,f,that)=>{
+            let choices = await f.ask(user.socket,that.chname,"请选择以下的一项：","check",'equal', 1, -1,
+            ["「手牌 +3」", "「行动次数 +2」"]);
+            if(choices[0]) user.draw(3);
+            if(choices[1]) user.gainAction(2);
+        }
     },{
         number:13,
         chname:'丰符「Otoshi Harvester」',
@@ -1905,7 +1960,21 @@ var cardSource=[
         jaspecial:'このカードを獲得するとき、他のプレイヤーは全員、「奉納米」１枚を獲得する。',
         enspecial:'',
         remark:'',
-        stage:'1'
+        stage:'1',
+        use:async (user,f,that)=>{
+            user.draw(5);
+            user.gainAction(1);
+            let cardkey = await f.ask(user.socket,that.chname,"请选择要弃置的牌", "hand",'equal', 3);
+            user.drop(cardkey,'hand');
+            console.log(cardkey);
+        },
+        onGain:(user,f,that) =>{
+          for(let otherUser of f.rooms[user.room].users){
+              if(otherUser.socket.username === user.socket.username) continue;
+              otherUser.gainCard('drops','basic',1,'gain');
+          }
+        }
+    },{
     },{
         number:14,
         chname:'被祭祀的风之人类「东风谷早苗」',
@@ -1941,7 +2010,12 @@ var cardSource=[
         jaspecial:'勝利点　１',
         enspecial:'',
         remark:'',
-        stage:'5'
+        stage:'5',
+        vp:1,
+        use:(user)=>{
+          user.draw(1);
+          user.gainAction(1);
+        }
     },{
         number:16,
         chname:'丰裕与收成的象征「秋穰子」',
@@ -1995,7 +2069,15 @@ var cardSource=[
         jaspecial:'',
         enspecial:'',
         remark:'',
-        stage:'1'
+        stage:'1',
+        use:async (user,f,that)=>{
+            user.draw(1);
+            user.gainAction(1);
+            user.gainMoney(1);
+            let cardkey = await f.ask(user.socket,that.chname,"请选择要弃置的牌", "hand",'equal', 1);
+            user.drop(cardkey,'hand');
+            console.log(cardkey);
+        },
     },{
         number:19,
         chname:'山坂与湖水的化身「八坂神奈子」',
@@ -2031,7 +2113,10 @@ var cardSource=[
         jaspecial:'',
         enspecial:'',
         remark:'',
-        stage:'6'
+        stage:'6',
+        use:(user)=>{
+          user.gainMoney(user.actionArea.filter((card) => {return card.type === '资源';}).length);
+        }
     }],
     [{
         number:1,
@@ -2104,7 +2189,18 @@ var cardSource=[
         jaspecial:'',
         enspecial:'',
         remark:'',
-        stage:'1'
+        stage:'1',
+        use:async (user,f,that)=>{
+            for(let time = 0; time < 2; time += 1){
+                let cardkey = await f.ask(user.socket, that.chname, "请选择要废弃的牌", "hand", 'equal', 1);
+                let cost = Number(user.hand[cardkey[0]].cost) + 1;
+                user.trash(cardkey,'hand');
+                let card = await f.ask(user.socket,that.chname,`请选择要获得的费用最多为${cost}的牌`,"kingdom",'equal', 1, cost);
+                card = card[0];
+                user.gainCard('drops', card.src, card.index, 'gain');
+                console.log(card);
+            }
+        }
     },{
         number:5,
         chname:'奇跡「ミラクルフルーツ」',
@@ -2465,7 +2561,19 @@ var cardSource=[
         jaspecial:'',
         enspecial:'',
         remark:'',
-        stage:''
+        stage:'',/*
+        onGain:(user,f,that)=>{
+            user.onGain[that.id] = user.onLost[that.id] = {
+                card:that,
+                func:(user,f,that)=>{
+                  if(user.cardAmount / 10 !== that.vp){
+                      user.vp -= that.vp;
+                      that.vp = Math.floor(user.cardAmount / 10);
+                      user.vp += that.vp;
+                  }
+                }
+            };
+        },*/
     },{
         number:4,
         chname:'美丽的绯之衣「永江衣玖」',
@@ -2483,7 +2591,23 @@ var cardSource=[
         jaspecial:'',
         enspecial:'',
         remark:'',
-        stage:''
+        stage:'',
+        use:async (user,f,that)=>{
+            let card = await f.ask(user.socket,that.chname,"请选择要获得的费用最多为4的牌","kingdom",'equal', 1, 4);
+            card = card[0];
+            user.gainCard('drops', card.src, card.index, 'gain');
+            console.log(card);
+            let type = f.rooms[user.room].cards[card.src][card.index].type;
+            if(type === '行动'){
+              user.gainAction(1);
+            }
+            else if(type === '资源'){
+              user.gainMoney(1);
+            }
+            else if(type === '胜利点'){
+              user.draw(1);
+            }
+        }
     },{
         number:5,
         chname:'闪耀的日之光「桑尼米尔克」',
@@ -2699,7 +2823,18 @@ var cardSource=[
         jaspecial:'',
         enspecial:'',
         remark:'',
-        stage:''
+        stage:'',
+        use:async (user,f,that)=>{
+            user.draw(1);
+            user.gainAction(1);
+            let cardkey = await f.ask(user.socket, that.chname, "请选择要废弃的牌", "hand", 'equal', 1);
+            let cost = Number(user.hand[cardkey[0]].cost) + 1;
+            user.trash(cardkey,'hand');
+            let card = await f.ask(user.socket,that.chname,`请选择要获得的费用最多为${cost}的牌`,"kingdom",'equal', 1, cost);
+            card = card[0];
+            user.gainCard('drops', card.src, card.index, 'gain');
+            console.log(card);
+        }
     }],
     [{
         number:1,
