@@ -29,11 +29,11 @@ var app3 = new Vue({
         otherIndex: 10,
         modal_title: '',
         modal_content: '',
-        modal_amount: 0,
+        modal_min: 0,
+        modal_max: '',
         modal_cards: [],
-        modal_from: '',
-        modal_cost: '',
-        modal_choices: [],
+        modal_area: '',
+        modal_filter: [],
         aCardUsing: false,
     },
     created: function(){
@@ -57,7 +57,7 @@ var app3 = new Vue({
               return;
             }
             // choosing card
-            if(app3.aCardUsing && (app3.modal_from === 'hand')){
+            if(app3.aCardUsing && (app3.modal_area === 'hand')){
                 if(!app3.myHand[index].chosen){
                   app3.modal_cards.push(index);
                   app3.myHand[index].chosen = true;
@@ -77,8 +77,8 @@ var app3 = new Vue({
               return;
             }
             // choosing card
-            if(app3.aCardUsing && (app3.modal_from === 'kingdom' || app3.modal_from === 'supply' || app3.modal_from === 'basic'
-            && app3[src][index].cost <= app3.modal_cost)){
+            if(app3.aCardUsing && (app3.modal_area === 'kingdom' || app3.modal_area === 'supply' || app3.modal_area === 'basic'
+            && app3.modal_filter[src][index])){
                 if(!app3[src][index].chosen){
                   app3.modal_cards.push({index:index,src:src});
                   app3[src][index].chosen = true;
@@ -107,21 +107,21 @@ var app3 = new Vue({
                 socket.emit('nextStage');
         },
         sendAnswer: (select)=>{
-          if(app3.modal_from === 'yn'){
+          if(app3.modal_area === 'yn'){
             socket.emit('answer',select);
           }
-          else if(app3.modal_from === 'check'){
+          else if(app3.modal_area === 'check'){
               $(".panel-body").find("input[type ='checkbox']").each(function(){
                   app3.modal_cards.push($(this).prop("checked"));
               });
               socket.emit('answer',app3.modal_cards);
           }
-          else if(app3.modal_from === 'hand'
-          || app3.modal_from === 'kingdom'
-          || app3.modal_from === 'supply'
-          || app3.modal_from === 'basic'){
+          else if(app3.modal_area === 'hand'
+          || app3.modal_area === 'kingdom'
+          || app3.modal_area === 'supply'
+          || app3.modal_area === 'basic'){
             socket.emit('answer',app3.modal_cards);
-            if(app3.modal_from === 'hand'){
+            if(app3.modal_area === 'hand'){
               app3.modal_cards.forEach( (i) => {
                 app3.myHand[i].chosen = false;
               });
@@ -146,7 +146,6 @@ var app3 = new Vue({
 socket.on('statusUpdate', (data) =>{
     app3.supplyRemain = data.supplyRemain || app3.supplyRemain ;
     app3.basicRemain = data.basicRemain || app3.basicRemain;
-    console.log(data.usersName);
     if(data.usersName){
         data.userPoint = changePlace(data.userPoint, data.usersName, username);
         data.usersName = changePlace(data.usersName, data.usersName, username);
@@ -154,9 +153,7 @@ socket.on('statusUpdate', (data) =>{
         data.userPoint.shift();
         data.usersName.shift();
     }
-    console.log(data.usersName);
     app3.otherName = data.usersName === undefined ? app3.otherName : data.usersName;
-    console.log(app3.otherName);
     app3.otherPoint = data.userPoint === undefined ? app3.otherPoint : data.userPoint;
     app3.nowAction = data.nowAction === undefined ? app3.nowAction : data.nowAction;
     app3.nowCard = data.nowCard === undefined ? app3.nowCard : data.nowCard;
@@ -181,6 +178,10 @@ socket.on('statusUpdate', (data) =>{
         else{
             app3.otherPoint[app3.otherName.indexOf(app3.nowPlayer)] = data.nowVp;
         }
+    }
+    if(data.myVp) app3.myPoint = data.myVp;
+    if(data.otherVp){
+      app3.otherPoint[app3.otherName.indexOf(data.oneName)] = data.otherVp;
     }
     if(data.nowStage !== undefined){
       if(data.nowStage !== addedStage){
@@ -226,22 +227,16 @@ socket.on('statusUpdate', (data) =>{
 socket.on('ask', (data) =>{
    app3.modal_title = data.title;
    app3.modal_content = data.content;
-   app3.modal_amount = data.amount;
-   app3.modal_from = data.from;
-   app3.modal_cost = data.cost;
-   app3.modal_choices = data.choices;//{src,index}
+   app3.modal_area = data.area;
+   app3.modal_min = data.min;
+   app3.modal_max = data.max;
+   app3.modal_filter = data.myFilter;//{src,index}
+   console.log(data);
+   var p = data;
    app3.modal_cards = [];
    $('#askModal').css('display','');
-   if(data.from === 'hand'){
-     if(data.choices != undefined)
-        app3.modal_choices = app3.myHand.map(data.choices);
-   }
-   if(data.from === 'kingdom' || data.from === 'supply' || data.from === 'basic'){
+   if(data.area === 'kingdom' || data.area === 'supply' || data.area === 'basic'){
      $("#askModal").css("top","70%");
-     app3.modal_choices = {supply:[],basic:[]};
-     for(let info of data.choices){
-       app3.modal_choices[info.src][info.index] = true;
-     }
    }
    else{
      $("#askModal").css("top","");
@@ -257,7 +252,7 @@ socket.on('sendRep', (data) => {
 socket.on('end game',() => {
     console.log('end game');
     var wined = true;
-    for(otpkey in app3.otherPoint){
+    for(let otpkey in app3.otherPoint){
         if (app3.otherPoint[otpkey] > app3.myPoint) wined = false;
     }
     if(wined){

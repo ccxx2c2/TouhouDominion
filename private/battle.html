@@ -7,14 +7,14 @@
           </div>
           <div class="panel-body">
             {{modal_content}}
-            <template v-for = "choice in modal_choices" v-if="modal_from === 'check'">
+            <template v-for = "choice in modal_filter" v-if="modal_area === 'check'">
               <br /><input type="checkbox" :name="choice">{{choice}}</input>
             </template>
           </div>
           <div class="panel-footer">
-              <button type="button" class="btn btn-primary" v-if="modal_from === 'yn'" @click="sendAnswer('y')">是</button>
-              <button type="button" class="btn btn-default" v-if="modal_from === 'yn'" @click="sendAnswer('n')">否</button>
-              <button type="button" class="btn btn-primary" v-if="modal_from === 'hand' || modal_from === 'check' || modal_from === 'kingdom' || modal_from === 'supply' || modal_from === 'basic'" @click="sendAnswer()">确认</button>
+              <button type="button" class="btn btn-primary" v-if="modal_area === 'yn'" @click="sendAnswer('y')">是</button>
+              <button type="button" class="btn btn-default" v-if="modal_area === 'yn'" @click="sendAnswer('n')">否</button>
+              <button type="button" class="btn btn-primary" v-if="modal_area === 'hand' || modal_area === 'check' || modal_area === 'kingdom' || modal_area === 'supply' || modal_area === 'basic'" @click="sendAnswer()">确认</button>
           </div>
         </div>
     </div>
@@ -27,7 +27,7 @@
                   </span>
                   <img :class="'basicCard '+ ((card.cost<=nowMoney) &&
                   (nowPlayer == username) && (nowStage == 'Buy') && (nowBuy > 0)
-                   && basicRemain[index]>0?'cardActive':'' + ((nowPlayer == username) && aCardUsing && (modal_from === 'basic' || modal_from === 'kingdom') && !(card.chosen) && (card.cost <= modal_cost) && (modal_choices['basic'][index])? 'selectable ' : '')
+                   && basicRemain[index]>0?'cardActive':'' + ((nowPlayer == username) && aCardUsing && (modal_area === 'basic' || modal_area === 'kingdom') && !(card.chosen) && (modal_filter['basic'][index])? 'selectable ' : '')
                    +((nowPlayer == username) && aCardUsing && (card.chosen) ? 'chosen ' : ''))"
                    :src="filename(card)" :alt="name(card)" @click="buy(index,'basic')"/>
               </div>
@@ -51,7 +51,7 @@
                               <img :class="'cards img-responsive col-xs-2 col-sm-2 col-md-2 col-lg-2 '
                               + ((card.cost<=nowMoney) && (nowPlayer == username)
                               && (nowStage == 'Buy')&& (nowBuy > 0) &&
-                              supplyRemain[index]>0?'cardActive':'' + ((nowPlayer == username) && aCardUsing && (modal_from === 'supply' || modal_from === 'kingdom') && !(card.chosen) && (card.cost <= modal_cost) && (modal_choices['supply'][index]) ? 'selectable ' : '')
+                              supplyRemain[index]>0?'cardActive':'' + ((nowPlayer == username) && aCardUsing && (modal_area === 'supply' || modal_area === 'kingdom') && !(card.chosen) && (modal_filter['supply'][index]) ? 'selectable ' : '')
                               +((nowPlayer == username) && aCardUsing && (card.chosen) ? 'chosen ' : '')) "
                               data-container="body" data-toggle="popover" data-placement="bottom"
                               data-trigger='hover' :data-original-title="title(card)"
@@ -84,7 +84,7 @@
               <template v-for="(card,index) in myHand">
                       <img :class="'CardInHand ' + (
                       (nowPlayer == username) && ((nowStage == 'Buy') && (card.type == '资源') ||　(nowStage == 'Action') && (card.type == '行动'))
-                       ?'cardActive ':'') + ((nowPlayer == username) && aCardUsing && (modal_from == 'hand') && !(card.chosen) && (typeof(modal_choices) === undefined || modal_choices[i]) ? 'selectable ' : '')
+                       ?'cardActive ':'') + ((nowPlayer == username) && aCardUsing && (modal_area == 'hand') && !(card.chosen) && (typeof(modal_filter) === 'undefined' || typeof(modal_filter[index]) === 'undefined' ||modal_filter[index]) ? 'selectable ' : '')
                        +((nowPlayer == username) && aCardUsing && (card.chosen) ? 'chosen ' : '')" :src="filename(card)" :alt="name(card)" @click="use(index)"
                        :style="'width: ' + myHand.length > 13 ? '5%' : myHand.length > 10 ? '8%' : '10%' "/>
                   </template>
