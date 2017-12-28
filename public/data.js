@@ -5,7 +5,10 @@ if(typeof(module) == "undefined"){
 }
         //number, chname,janame,enname,expansion,type,type2,type3,cost,cheffect,jaeffect,eneffect,chspecial,jaspecial,enspecial,remark,stage
         //^(.*?)\t(.*?)\t(.*?)\t(.*?)\t(.*?)\t(.*?)\t(.*?)\t(.*?)\t(.*?)\t(.*?)\t(.*?)\t(.*?)\t(.*?)\t(.*?)\t(.*?)\t(.*?)\t(.*?)$
-        //{\n\tnumber:$1,\n\tchname:'$2',\n\tjaname:'$3',\n\tenname:'$4',\n\texpansion:'$5',\n\ttype:'$6',\n\ttype2:'$7',\n\ttype3:'$8',\n\tcost:'$9',\n\tcheffect:'$10',\n\tjaeffect:'$11',\n\teneffect:'$12',\n\tchspecial:'$13',\n\tjaspecial:'$14',\n\tenspecial:'$15',\n\tremark:'$16',\n\tstage:'$17'\n},
+        /*{\n\tnumber:$1,\n\tchname:'$2',\n\tjaname:'$3',\n\tenname:'$4',\n\t
+        expansion:'$5',\n\ttype:'$6',\n\ttype2:'$7',\n\ttype3:'$8',\n\tcost:'$9',
+        \n\tcheffect:'$10',\n\tjaeffect:'$11',\n\teneffect:'$12',\n\tchspecial:'$13',
+        \n\tjaspecial:'$14',\n\tenspecial:'$15',\n\tremark:'$16',\n\tstage:'$17'\n},*/
 const MAX_INT = 999;
 var cardSource=[
     [{
@@ -139,7 +142,19 @@ var cardSource=[
         jaspecial:'',
         enspecial:'',
         remark:'',
-        stage:'ex'
+        stage:'ex',
+        use:async (user,f,that)=>{
+            user.draw(2);
+            for(let otherUserkey in f.rooms[user.room].users){
+                let otherUser = f.rooms[user.room].users[otherUserkey];
+                if(otherUser.socket.username === user.socket.username) continue;
+                await otherUser.attacked(that);
+                if(otherUser.affect){
+                  otherUser.gainCard('drops','basic',6,'gain');
+                }
+                otherUser.affect = true;
+            }
+        }
     },{
         number:7,
         chname:'恋符「极限火花」',
@@ -157,7 +172,28 @@ var cardSource=[
         jaspecial:'',
         enspecial:'',
         remark:'',
-        stage:'自机'
+        stage:'自机',
+        use:async (user,f,that)=>{
+            user.gainMoney(2);
+            for(let otherUserkey in f.rooms[user.room].users){
+                let otherUser = f.rooms[user.room].users[otherUserkey];
+                if(otherUser.socket.username === user.socket.username
+                || otherUser.hand.length - 3 <= 0) continue;
+                await otherUser.attacked(that);
+                if(otherUser.affect){
+                  let cardkey = await f.ask({
+                  	socket: otherUser.socket,
+                  	title: that.chname,
+                  	content: `请选择要弃置的${otherUser.hand.length - 3}张牌`,
+                  	area: "hand",
+                  	min: otherUser.hand.length - 3,
+                  	max: otherUser.hand.length - 3
+                  });
+                  otherUser.drop(cardkey,'hand');
+                }
+                otherUser.affect = true;
+            }
+        }
     },{
         number:8,
         chname:'小恶魔',
@@ -257,15 +293,15 @@ var cardSource=[
         use:(user,f)=>{
             user.draw(2);
         },
-        onAction:async (user,f,that)=>{
+        onAttack: async (user,f,that,card)=>{
             if(await f.ask({
             	socket: user.socket,
             	title: that.chname,
-            	content: `是否展示${that.chname}并免受攻击影响？`,
+            	content: `是否展示${that.chname}并免受${card.chname}攻击影响？`,
             	area:  'yn'
             })){
               user.affect = false;
-              that.shown = true;
+              await user.showCard([user.hand.indexOf(that)]);
             }
         }
     },{
@@ -326,6 +362,7 @@ var cardSource=[
                     	content: `是否弃置${user.hand[user.hand.length - 1].chname}？`,
                     	area: 'yn'
                     })){
+                        f.sendRep(user.socket,user,`${user.socket.username}将${user.hand[user.hand.length - 1].chname}放在一旁`);
                         user.drop([user.hand.length - 1],'hand','temp');
                     }
                     user.drop('all','temp');
@@ -367,7 +404,36 @@ var cardSource=[
         jaspecial:'',
         enspecial:'',
         remark:'',
-        stage:'6'
+        stage:'6',
+        use:async (user,f,that)=>{
+            user.gainAction(1);
+            let choices = await f.ask({
+            	socket: user.socket,
+            	title: that.chname,
+            	content: "请选择一项：",
+            	area: "check",
+            	min:  1,
+            	max:  1,
+              myFilter: ["「金钱+2」", "「弃置你的所有手牌，抓4张牌。然后拥有5张以上手牌的全部其他玩家弃置所有手牌，抓4张牌。」"]
+            });
+            if(choices[0]) {user.gainMoney(2);f.sendRep(user.socket,user,`金钱+2`);}
+            if(choices[1]){
+              user.drop('all','hand');
+              user.draw(4);
+              for(let otherUserkey in f.rooms[user.room].users){
+                  let otherUser = f.rooms[user.room].users[otherUserkey];
+                  if(otherUser.socket.username === user.socket.username
+                  || otherUser.hand.length < 5) continue;
+                  await otherUser.attacked(that);
+                  if(otherUser.affect){
+                    otherUser.drop('all','hand');
+                    otherUser.draw(4);
+                  }
+                  otherUser.affect = true;
+              }
+              f.sendRep(user.socket,user,`弃置全部手牌`);
+            }
+        }
     },{
         number:16,
         chname:'大妖精',
@@ -565,6 +631,7 @@ var cardSource=[
             });
             user.drop(cardkey,'hand');
             console.log(cardkey);
+            f.sendRep(user.socket,user,`${user.socket.username}弃置了${cardkey.length}张牌`);
             user.draw(cardkey.length);
         }
     },{
@@ -617,7 +684,29 @@ var cardSource=[
         jaspecial:'',
         enspecial:'',
         remark:'',
-        stage:'自机'
+        stage:'自机',
+        use:async (user,f,that)=>{
+            user.gainCard('deck','basic',1,'gain','top');
+            for(let otherUserkey in f.rooms[user.room].users){
+                let otherUser = f.rooms[user.room].users[otherUserkey];
+                if(otherUser.socket.username === user.socket.username) continue;
+                await otherUser.attacked(that);
+                if(otherUser.affect){
+                  let cardkey = await f.ask({
+                  	socket: otherUser.socket,
+                  	title: that.chname,
+                  	content: `请选择要放回牌堆顶的一张胜利点`,
+                  	area: "hand",
+                  	min: 1,
+                  	max: 1,
+                    filter: (card) => {return card.type === '胜利点';}
+                  });
+                  otherUser.drop(cardkey,'hand','deck','top');
+                  otherUser.showCard(cardkey.length > 0 ? cardkey : 'all');
+                }
+                otherUser.affect = true;
+            }
+        }
     },{
         number:25,
         chname:'宵暗的妖怪「露米娅」',
@@ -646,10 +735,10 @@ var cardSource=[
             	max:  2,
               myFilter: ["「手牌 +1」", "「行动次数 +1」", "「购买次数 +1」", "「金钱+1」"]
             });
-            if(choices[0]) user.draw(1);
-            if(choices[1]) user.gainAction(1);
-            if(choices[2]) user.gainBuy(1);
-            if(choices[3]) user.gainMoney(1);
+            if(choices[0]) {user.draw(1);f.sendRep(user.socket,user,`手牌+1`);}
+            if(choices[1]) {user.gainAction(1);f.sendRep(user.socket,user,`获得一点行动`);}
+            if(choices[2]) {user.gainBuy(1);f.sendRep(user.socket,user,`购买+1`);}
+            if(choices[3]) {user.gainMoney(1);f.sendRep(user.socket,user,`金钱+1`);}
         }
     }],
     [{
@@ -699,13 +788,29 @@ var cardSource=[
         type3:'',
         cost:'3',
         cheffect:'行动次数+1 \n展示你的手牌。\n如果任意两张不重复，\n手牌+3。\n否则手牌+1。',
-        jaeffect:'　+1　アクション\nあなたの手札を公開する。\n重複しているかーどが1枚もない場合、\n+３　カードを引く。\nそれ以外の場合、+１　カードを引く。',
+        jaeffect:'　+1　アクション\nあなたの手札を公開する。\n重複しているカードが1枚もない場合、\n+３　カードを引く。\nそれ以外の場合、+１　カードを引く。',
         eneffect:'',
         chspecial:'',
         jaspecial:'',
         enspecial:'',
         remark:'',
-        stage:'1'
+        stage:'1',
+        use:async (user,f,that)=>{
+            user.gainAction(1);
+            user.showCard('all');
+            let filter = {basic:[],supply:[]};
+            let identical = false;
+            for(let i = user.hand.length - 1; i >= 0; i -= 1){
+              let card = user.hand[i];
+              if(filter[card.src][card.index]){
+                identical = true;
+                break;
+              }
+              filter[card.src][card.index] = true;
+            }
+            if(identical) user.draw(3);
+            else user.draw(1);
+        }
     },{
         number:4,
         chname:'寒符「lingering cold」',
@@ -741,7 +846,31 @@ var cardSource=[
         jaspecial:'',
         enspecial:'',
         remark:'',
-        stage:'5'
+        stage:'5',
+        use:async (user,f,that)=>{
+            user.gainMoney(2);
+            for(let otherUserkey in f.rooms[user.room].users){
+                let otherUser = f.rooms[user.room].users[otherUserkey];
+                if(otherUser.socket.username === user.socket.username) continue;
+                await otherUser.attacked(that);
+                if(otherUser.affect){
+                  let cardkey = await f.ask({
+                  	socket: otherUser.socket,
+                  	title: that.chname,
+                  	content: `请选择要弃置的一张「お賽銭」`,
+                  	area: "hand",
+                  	min: 1,
+                  	max: 1,
+                    filter: (card) => {return card.janame === '「お賽銭」';}
+                  });
+                  otherUser.drop(cardkey,'hand');
+                  if(cardkey.length === 0){
+                    otherUser.showCard('all');
+                  }
+                }
+                otherUser.affect = true;
+            }
+        }
     },{
         number:6,
         chname:'樱符「完全墨染的樱花」',
@@ -759,7 +888,19 @@ var cardSource=[
         jaspecial:'',
         enspecial:'',
         remark:'',
-        stage:'6'
+        stage:'6',
+        use:async (user,f,that)=>{
+            for(let otherUserkey in f.rooms[user.room].users){
+                let otherUser = f.rooms[user.room].users[otherUserkey];
+                if(otherUser.socket.username === user.socket.username) continue;
+                await otherUser.attacked(that);
+                if(otherUser.affect){
+                  otherUser.drop([0],'deck');
+                  otherUser.gainCard('deck','basic',6,'gain','top');
+                }
+                otherUser.affect = true;
+            }
+        }
     },{
         number:7,
         chname:'式符「飞翔晴明」',
@@ -795,7 +936,28 @@ var cardSource=[
         jaspecial:'あなたがカード1枚を獲得するとき、このカードを手札から公開してもよい。そうした場合、そのカードを廃棄するか、あなたの山札の一番上に置く。',
         enspecial:'',
         remark:'',
-        stage:'ex'
+        stage:'ex',
+        use:async (user,f,that)=>{
+          user.draw(6 - user.hand.length);
+        },
+        onDraw:(user,f,that)=>{
+            user.onGain[that.id] = {
+                from:that,
+                func: async (user,f,that,card,to)=>{
+                  let choice = await f.ask({
+                  	socket: user.socket,
+                  	title: that.chname,
+                  	content: `你可以选择以下一项，若选择则同时展示${that.chname}：`,
+                  	area:  'check',
+                  	min:  0,
+                  	max:  1,
+                    myFilter: [`将${card.chname}废弃`, `将${card.chname}放到牌堆顶`]
+                  });
+                  if(cardkey[0]){user.showCard([user.hand.indexOf(that)]);user.trash([user[to].indexOf(card)],to);}
+                  if(cardkey[1]){user.showCard([user.hand.indexOf(that)]);f.sendRep(user.socket,user,`${card.chname}放到了牌堆顶`);}
+                }
+            };
+        },
     },{
         number:9,
         chname:'隙间妖怪的式神的式神「橙」',
@@ -847,7 +1009,29 @@ var cardSource=[
         jaspecial:'',
         enspecial:'',
         remark:'',
-        stage:'3'
+        stage:'3',
+        use:async (user,f,that)=>{
+              user.draw(2);
+              for(let otherUserkey in f.rooms[user.room].users){
+                  let otherUser = f.rooms[user.room].users[otherUserkey];
+                  if(otherUser.socket.username === user.socket.username
+                  || otherUser.hand.length < 4) continue;
+                  await otherUser.attacked(that);
+                  if(otherUser.affect){
+                    let cardkey = await f.ask({
+                    	socket: otherUser.socket,
+                    	title: that.chname,
+                    	content: `请选择要弃置的${otherUser.hand.length - 3}张牌`,
+                    	area: "hand",
+                    	min: otherUser.hand.length - 3,
+                    	max: otherUser.hand.length - 3
+                    });
+                    otherUser.drop(cardkey,'hand','deck','top');
+                  }
+                  otherUser.affect = true;
+                  f.sendRep(user.socket,user,`${otherUser.socket.username}放回了手牌`)
+              }
+        }
     },{
         number:11,
         chname:'骚灵提琴手「露娜萨·普莉兹姆利巴」',
@@ -1056,7 +1240,6 @@ var cardSource=[
             	area: 'yn'
             })){
               user.trash([user.actionArea.indexOf(that)],'actionArea');
-              f.sendRep(user.socket,user,`${user.socket.username}废弃了${that.chname}`);
               user.gainMoney(2);
             }
         }
@@ -1077,7 +1260,16 @@ var cardSource=[
         jaspecial:'',
         enspecial:'',
         remark:'',
-        stage:'自机'
+        stage:'自机'/*,
+        use: async (user,f,that) =>{
+          let userOrder = f.rooms[user.room].userOrder;
+          let nextUser = (userOrder.indexOf(user.socket.username) + 1) % userOrder.length;
+          nextUser = f.rooms[user.room].users[userOrder[nextUser]];
+
+          cardkey = cardkey[0];
+          if(cardkey && lastUser.gained[cardkey.src][cardkey.index])
+            user.gainCard('drops', cardkey.src, cardkey.index, 'gain');
+        },*/
     },{
         number:20,
         chname:'半分虚幻的庭师「魂魄妖梦」',
@@ -1157,6 +1349,7 @@ var cardSource=[
             if(cardkey[0] !== undefined){
               user.drop(cardkey, "hand");
               user.gainAction(1);
+              f.sendRep(user.socket,user,`获得一点行动`);
             }
             cardkey = await f.ask({
             	socket: user.socket,
@@ -1169,6 +1362,7 @@ var cardSource=[
             if(cardkey[0] !== undefined){
               user.drop(cardkey, "hand");
               user.gainBuy(1);
+              f.sendRep(user.socket,user,`获得一点购买`);
             }
             console.log(cardkey);
         }
@@ -1207,7 +1401,24 @@ var cardSource=[
         jaspecial:'',
         enspecial:'',
         remark:'',
-        stage:'6'
+        stage:'6',
+        use:async (user,f,that)=>{
+            let cardkey = await f.ask({
+            	socket: user.socket,
+            	title:  that.chname,
+            	content:  "请选择要展示的6胜利点",
+            	area:  "hand",
+            	min:  0,
+            	max:  1,
+              filter: (card) => {return card.chname === '永远亭';}
+            });
+            if(cardkey[0] !== undefined){
+              user.showCard(cardkey);
+              user.gainCard('drops','basic',2,'gain');
+            }
+            else{
+              user.gainCard('drops','basic',1,'gain');
+            }
     },{
         number:25,
         chname:'乐园的可爱巫女「博丽灵梦」',
@@ -1345,8 +1556,8 @@ var cardSource=[
             	max: 1,
               myFilter: ["「手牌 +2」", "「金钱 +2」", "「将你的2张手牌移出游戏」"]
             });
-            if(choices[0]) user.draw(2);
-            if(choices[1]) user.gainMoney(2);
+            if(choices[0]) {user.draw(2);f.sendRep(user.socket,user,`手牌+2`);}
+            if(choices[1]) {user.gainMoney(2);f.sendRep(user.socket,user,`金钱+2`);}
             if(choices[2]){
                   let cardkey = await f.ask({
                   	socket: user.socket,
@@ -1476,6 +1687,7 @@ var cardSource=[
             if(cardkey[0] !== undefined){
               user.drop(cardkey, "hand");
               user.draw(cardkey.length);
+              f.sendRep(user.socket,user,`重抽了${cardkey.length}张牌`);
             }
             cardkey = await f.ask({
             	socket: user.socket,
@@ -1488,6 +1700,7 @@ var cardSource=[
             if(cardkey[0] !== undefined){
               user.drop(cardkey, "hand");
               user.gainMoney(cardkey.length);
+              f.sendRep(user.socket,user,`获得了${cardkey.length}金钱`);
             }
             console.log(cardkey);
         }
@@ -1614,7 +1827,7 @@ var cardSource=[
           for(let otherUserkey in f.rooms[user.room].users){
             let otherUser = f.rooms[user.room].users[otherUserkey];
               if(otherUser.socket.username === user.socket.username) continue;
-              otherUser.gainCard('drops','basic',6,'gain');
+
           }
         }
     },{
@@ -2139,8 +2352,10 @@ var cardSource=[
             	max: 1,
               myFilter: ["「手牌 +3」", "「行动次数 +2」"]
             });
-            if(choices[0]) user.draw(3);
-            if(choices[1]) user.gainAction(2);
+            if(choices[0]) {user.draw(3);
+            f.sendRep(user.socket,user,`手牌+3`);}
+            if(choices[1]) {user.gainAction(2)
+            f.sendRep(user.socket,user,`行动+2`);}
         }
     },{
         number:13,
@@ -2437,9 +2652,9 @@ var cardSource=[
                 	title: that.chname,
                 	content: `请选择要获得的费用最多为${cost}的牌`,
                 	area: "kingdom",
-                	min: 1,
+                	min: 0,
                 	max: 1,
-                  myFilter: (card) =>{return card.cost <= cost;}
+                  myFilter: (card) =>{return Number(card.cost) === cost;}
                 });
                 cardkey = cardkey[0];
                 user.gainCard('drops', cardkey.src, cardkey.index, 'gain');
@@ -3107,6 +3322,7 @@ var cardSource=[
     [{
         number:1,
         chname:'赛钱',
+        janame:'「お賽銭」'
         expansion:'基础牌',
         type:'资源',
         cost:0,

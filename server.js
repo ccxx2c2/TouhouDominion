@@ -124,11 +124,12 @@ class User{
         this.deck = props.deck || [];
         this.drops = props.drops || [];
         this.actionArea = props.actionArea || [];
+        this.duration = props.duration || [];
         this.money = props.money || 0;
         this.vp = props.vp || 0;
         this.action = props.action || 1;
         this.buy = props.buy || 1;
-        this.affact = props.affact || false;//whether affect by attack
+        this.affect = props.affect || true;
         this.aCardUsing = props.aCardUsing || false;
         this.actionUsed = props.actionUsed || 0;
         this.onGain = props.onGain || {};
@@ -138,8 +139,9 @@ class User{
         this.gained = props.gained || {supply:{},basic:{}};//src:{index:type}
     }
 
-    gainCard(to, src, index, type){
+    gainCard(to, src, index, type, place = 'bottom'){
         let room = rooms[this.room];
+        if(room[src + "Remain"][index] <= 0) return;
         let card = new DomCard(room[src][index]);
         card.no = room[src + "Total"][index] - room[src + "Remain"][index] + 1;
         card.id = (src === 'basic' ? 20 : 0) * 100000 + index * 100 + card.no;
@@ -158,19 +160,23 @@ class User{
         if(card.onGain !== undefined){
             card.onGain(this,exFunctions,card);
         }
-        this[to].push(card);
+        if(place === 'bottom')
+          this[to].push(card);
+        else if (place === 'top'){
+          this[to].unshift(card);
+        }
         this.cardAmount += 1;
         for(let cardid in this.onGain){
           let eff = this.onGain[cardid];
-          eff.func(this, exFunctions, eff.from, card);
+          eff.func(this, exFunctions, eff.from, card,to);
         }
 
         // send content
         if(type !== undefined){
           let content = type === 'buy'
-          ? `${room.nowPlayer} 购买了 ${room[src][index].chname}`
+          ? `${this.socket.username} 购买了 ${room[src][index].chname}`
           : type === 'gain'
-          ? `获得了${card.chname}` : undefined ;
+          ? `${this.socket.username} 获得了${card.chname}` : undefined ;
           generalStatus(this.socket);
           sendRep(this.socket, this, content);
           this.gained[src][index] = type;
@@ -179,10 +185,10 @@ class User{
         if(room[src + "Remain"][index] === 0){
             let usedup = 0;
             room.basicRemain.forEach((val) => {
-                if(val === 0) usedup += 1;
+                if(val <= 0) usedup += 1;
             });
             room.supplyRemain.forEach((val) => {
-                if(val === 0) usedup += 1;
+                if(val <= 0) usedup += 1;
             });
               if(room.basicRemain[5] === 0 || usedup >= 3) {
                 endGame(this.socket.room);
@@ -241,9 +247,10 @@ class User{
               }
           });
         }
-        this.socket.emit("statusUpdate", {
-              drops: this.drops,
-        });
+        let data = {};
+        data[from] = this[from];
+        data[to] = this[to];
+        this.socket.emit("statusUpdate", data);
     }
 
     trash(amount,from){
@@ -251,15 +258,16 @@ class User{
       console.log("in trash cards");
         if(amount == 'all'){
             this[from].forEach( card => {
+            f.sendRep(this.socket,this,`${this.socket.username}废弃了${card.chname}`);
                 if(card.vp !== undefined){
                     this.vp -= card.vp;
                 }
-                delete this.onGain[card.id];
-                delete this.onLost[card.id];
                 for(let cardid in this.onLost){
                   let eff = this.onLost[cardid];
                   eff.func(this, exFunctions, eff.card, card);
                 }
+                delete this.onGain[card.id];
+                delete this.onLost[card.id];
             });
             room.trash = room.trash.concat(this[from]);
             this[from] = [];
@@ -271,6 +279,7 @@ class User{
           myamount.forEach( index =>{
               console.log(index, this[from][index].chname, this[from][index].no,this[from][index].vp,this.vp);
               let card = this[from][index];
+              f.sendRep(this.socket,this,`${this.socket.username}废弃了${card.chname}`);
               if(typeof(this[from][index].vp) !== "undefined"){
                 this.vp -= this[from][index].vp;
               }
@@ -284,6 +293,40 @@ class User{
           });
         }
 
+    }
+
+    async showCard(amount){
+        let room = rooms[this.room];
+        console.log("in show card");
+        if(amount === 'all'){
+          await this.hand.forEach(card =>{
+            card.shown = true;
+            sendRep(this.socket,this,`${this.socket.username}展示了${card.chname}`);
+          });
+        }
+        if(Array.isArray(amount)){
+        await amount.forEach( index =>{
+              console.log(index, this.hand[index].chname, this.hand[index].no);
+              let card = this.hand[index];
+              card.shown = true;
+              sendRep(this.socket,this,`${this.socket.username}展示了${card.chname}`);
+          });
+        }
+    }
+
+    async attacked(from){
+      console.log("on attacked of " + this.socket.username);
+      for(let cardid in this.duration){
+        let card = this.duration[cardid];
+        if(typeof(card.onAttack) !== 'function') continue;
+        await eff.func(this, exFunctions, card, from);
+      }
+      for(let cardid in this.hand){
+        let card = this.hand[cardid];
+        if(typeof(card.onAttack) !== 'function') continue;
+        await card.onAttack(this, exFunctions, card, from);
+      }
+      console.log("attack finished of " + this.socket.username);
     }
 }
 
@@ -324,7 +367,8 @@ class DomCard extends Card{
         this.vp = props.vp || 0 ;
         this.use = props.use || undefined ;
         this.onGain = props.onGain || undefined;
-        this.onAction = props.onAction || undefined;
+        this.onAttack = props.onAttack || undefined;
+        this.onDraw = props.onDraw || undefined;
     }
 }
 
@@ -491,7 +535,9 @@ function ask(args){
     socket.asking = true;
     if(typeof(args.myFilter) === 'function'){
         if(area === 'hand'){
-          myFilter = user.hand.map(args.myFilter);
+          myFilter = {
+            hand:user.hand.map(args.myFilter)
+          };
         }
         else if(area === 'kingdom' || area === 'supply' || area === 'basic'){
           console.log("in myFilter");
@@ -518,7 +564,7 @@ function ask(args){
     return new Promise( (resolve,reject) =>{
         socket.once('answer', (data) =>{
             console.log('in answering');
-            if(!socket.asking || socket.username != rooms[socket.room].nowPlayer) return;
+            if(!socket.asking ) return;
             if(area === 'yn'){
               socket.asking = false;
               resolve(data === 'y');
@@ -545,7 +591,7 @@ function ask(args){
               if(cards.length < min){
                   let tmpCards = [];
                   rooms[socket.room].users[socket.username][area].forEach((e,i)=>{
-                      if(!(i in cards)) tmpCards.push(i);
+                      if(!(cards.includes(i)) && filter[i]) tmpCards.push(i);
                   });
                   tmpCards.shuffle();
                   cards = cards.concat(tmpCards.slice(0,min - cards.length));
@@ -872,17 +918,19 @@ io.on('connection',(socket) =>{
         user.actionArea.push(usingCard);
         user.hand.splice(index,1);//affect status update
 
-        socket.emit("statusUpdate",{
-          usingCard: usingCard,
-        });
-        socket.to(socket.room).emit("statusUpdate",{
-          usingCard: usingCard,
-        });
-
         if(usingCard.type == '行动') {
           user.action -= 1;
           user.actionUsed ++;
         }
+        socket.emit("statusUpdate",{
+          usingCard: usingCard,
+          nowAction:user.action,
+        });
+        socket.to(socket.room).emit("statusUpdate",{
+          usingCard: usingCard,
+          nowAction:user.action,
+        });
+
         await usingCard.use(user,exFunctions,usingCard);
 
         console.log("used");

@@ -1,6 +1,7 @@
 *.log
 node_modules/
 olded/
+log/
 private/users.js
 public/fonts/
 public/pic/

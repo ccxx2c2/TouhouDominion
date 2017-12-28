@@ -35,6 +35,7 @@ var app3 = new Vue({
         modal_area: '',
         modal_filter: [],
         aCardUsing: false,
+        asking: false,
     },
     created: function(){
     },
@@ -53,18 +54,21 @@ var app3 = new Vue({
             this.binded = $(".cards").length;
         },
         use: (index) => {
-            if(!app3.nowPlayer === username){
+            if(!app3.nowPlayer === username
+            && !app3.asking){
               return;
             }
             // choosing card
-            if(app3.aCardUsing && (app3.modal_area === 'hand')){
-                if(!app3.myHand[index].chosen){
-                  app3.modal_cards.push(index);
-                  app3.myHand[index].chosen = true;
-              }
-              else{
-                  app3.modal_cards.splice(app3.modal_cards.indexOf(index),1);
-                  app3.myHand[index].chosen = false;
+            if(app3.asking){
+              if((app3.modal_area === 'hand')){
+                  if(!app3.myHand[index].chosen){
+                    app3.modal_cards.push(index);
+                    app3.myHand[index].chosen = true;
+                }
+                else{
+                    app3.modal_cards.splice(app3.modal_cards.indexOf(index),1);
+                    app3.myHand[index].chosen = false;
+                }
               }
             }
             //using card
@@ -73,25 +77,28 @@ var app3 = new Vue({
             }
         },
         buy: (index,src) => {
-            if(!app3.nowPlayer === username){
+            if(!app3.nowPlayer === username
+            && !app3.asking){
               return;
             }
             // choosing card
-            if(app3.aCardUsing && (app3.modal_area === 'kingdom' || app3.modal_area === 'supply' || app3.modal_area === 'basic'
-            && app3.modal_filter[src][index])){
-                if(!app3[src][index].chosen){
-                  app3.modal_cards.push({index:index,src:src});
-                  app3[src][index].chosen = true;
-                }
-                else{
-                  for(let i = app3.modal_cards.length - 1; i >= 0; i -= 1){
-                      if(app3.modal_cards[i].index === index
-                      && app3.modal_cards[i].src === src ){
-                        app3.modal_cards.splice(i,1);
-                        break;
-                      }
+            if(app3.asking){
+              if((app3.modal_area === 'kingdom' || app3.modal_area === 'supply' || app3.modal_area === 'basic'
+              && app3.modal_filter[src][index])){
+                  if(!app3[src][index].chosen){
+                    app3.modal_cards.push({index:index,src:src});
+                    app3[src][index].chosen = true;
                   }
-                  app3[src][index].chosen = false;
+                  else{
+                    for(let i = app3.modal_cards.length - 1; i >= 0; i -= 1){
+                        if(app3.modal_cards[i].index === index
+                        && app3.modal_cards[i].src === src ){
+                          app3.modal_cards.splice(i,1);
+                          break;
+                        }
+                    }
+                    app3[src][index].chosen = false;
+                }
               }
             }
             //buying card
@@ -107,6 +114,7 @@ var app3 = new Vue({
                 socket.emit('nextStage');
         },
         sendAnswer: (select)=>{
+          app3.asking = false;
           if(app3.modal_area === 'yn'){
             socket.emit('answer',select);
           }
@@ -135,7 +143,51 @@ var app3 = new Vue({
           }
           $('#askModal').css('display','none');
           $('.backdrop').css('display','none');
-        }
+        },
+        cssGenerate: (place, card, index) => {
+          let ret = '';
+          if(app3.asking
+          && (card.chosen)){
+            ret += 'chosen ';
+          }
+
+          if(app3.asking
+          && !(card.chosen)
+          && (app3.modal_area === place || (app3.modal_area === 'kingdom' && place !== 'hand'))
+          && (typeof(app3.modal_filter) === 'undefined'
+              || typeof(app3.modal_filter[place][index]) === 'undefined'
+              || app3.modal_filter[place][index])){
+            ret += 'selectable ';
+          }
+
+          if(place === 'basic' || place === 'supply'){
+              if(app3.asking ||((app3.nowPlayer == username)
+              && (card.cost <= app3.nowMoney)
+              && (app3.nowStage === 'Buy')
+              && (app3.nowBuy > 0)
+              && app3[place + "Remain"][index] > 0)){
+                ret += 'cardActive ';
+              }
+              if(place === 'basic'){
+                  return 'basicCard ' + ret;
+              }
+             if(place === 'supply'){
+                ret += 'cards img-responsive col-xs-2 col-sm-2 col-md-2 col-lg-2 ';
+                return ret;
+              }
+          }
+           if(place === 'hand'){
+             if(app3.asking || ((app3.nowPlayer == username)
+             && ((app3.nowStage == 'Buy') && (card.type == '资源')
+                ||　(app3.nowStage == 'Action') && (card.type == '行动')))){
+                 ret += 'cardActive ';
+             }
+             return 'CardInHand ' + ret;
+           }
+        },
+        buttonAvailable: () => {
+            return app3.modal_cards.length < app3.modal_min && jQuery('.selectable').length > 0;
+        },
     },
     updated: function(){
         this.bind();
@@ -231,6 +283,7 @@ socket.on('ask', (data) =>{
    app3.modal_min = data.min;
    app3.modal_max = data.max;
    app3.modal_filter = data.myFilter;//{src,index}
+   app3.asking = true;
    console.log(data);
    var p = data;
    app3.modal_cards = [];

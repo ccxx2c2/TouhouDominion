@@ -14,7 +14,7 @@
           <div class="panel-footer">
               <button type="button" class="btn btn-primary" v-if="modal_area === 'yn'" @click="sendAnswer('y')">是</button>
               <button type="button" class="btn btn-default" v-if="modal_area === 'yn'" @click="sendAnswer('n')">否</button>
-              <button type="button" class="btn btn-primary" v-if="modal_area === 'hand' || modal_area === 'check' || modal_area === 'kingdom' || modal_area === 'supply' || modal_area === 'basic'" @click="sendAnswer()">确认</button>
+              <button type="button" class="btn btn-primary" :disabled="buttonAvailable()" v-if="modal_area === 'hand' || modal_area === 'check' || modal_area === 'kingdom' || modal_area === 'supply' || modal_area === 'basic'" @click="sendAnswer()">确认</button>
           </div>
         </div>
     </div>
@@ -25,10 +25,7 @@
                   <span class="count" :style="'left:'+index%2*50+'%'">
                     {{basicRemain[index]}}
                   </span>
-                  <img :class="'basicCard '+ ((card.cost<=nowMoney) &&
-                  (nowPlayer == username) && (nowStage == 'Buy') && (nowBuy > 0)
-                   && basicRemain[index]>0?'cardActive':'' + ((nowPlayer == username) && aCardUsing && (modal_area === 'basic' || modal_area === 'kingdom') && !(card.chosen) && (modal_filter['basic'][index])? 'selectable ' : '')
-                   +((nowPlayer == username) && aCardUsing && (card.chosen) ? 'chosen ' : ''))"
+                  <img :class="cssGenerate('basic',card,index)"
                    :src="filename(card)" :alt="name(card)" @click="buy(index,'basic')"/>
               </div>
               <div v-if="index%2===1" class="clearfix visible-block"></div>
@@ -48,11 +45,7 @@
                               <span class="count" :style="'left:'+index%5*16.67+'%'">
                                 {{supplyRemain[index]}}
                               </span>
-                              <img :class="'cards img-responsive col-xs-2 col-sm-2 col-md-2 col-lg-2 '
-                              + ((card.cost<=nowMoney) && (nowPlayer == username)
-                              && (nowStage == 'Buy')&& (nowBuy > 0) &&
-                              supplyRemain[index]>0?'cardActive':'' + ((nowPlayer == username) && aCardUsing && (modal_area === 'supply' || modal_area === 'kingdom') && !(card.chosen) && (modal_filter['supply'][index]) ? 'selectable ' : '')
-                              +((nowPlayer == username) && aCardUsing && (card.chosen) ? 'chosen ' : '')) "
+                              <img :class="cssGenerate('supply',card,index)"
                               data-container="body" data-toggle="popover" data-placement="bottom"
                               data-trigger='hover' :data-original-title="title(card)"
                               data-html="true" :data-content="description(card).split('\n').join('<br>')"
@@ -82,10 +75,7 @@
           </div>
           <div id="cardInHand">
               <template v-for="(card,index) in myHand">
-                      <img :class="'CardInHand ' + (
-                      (nowPlayer == username) && ((nowStage == 'Buy') && (card.type == '资源') ||　(nowStage == 'Action') && (card.type == '行动'))
-                       ?'cardActive ':'') + ((nowPlayer == username) && aCardUsing && (modal_area == 'hand') && !(card.chosen) && (typeof(modal_filter) === 'undefined' || typeof(modal_filter[index]) === 'undefined' ||modal_filter[index]) ? 'selectable ' : '')
-                       +((nowPlayer == username) && aCardUsing && (card.chosen) ? 'chosen ' : '')" :src="filename(card)" :alt="name(card)" @click="use(index)"
+                      <img :class="cssGenerate('hand',card,index)" :src="filename(card)" :alt="name(card)" @click="use(index)"
                        :style="'width: ' + myHand.length > 13 ? '5%' : myHand.length > 10 ? '8%' : '10%' "/>
                   </template>
           </div>
