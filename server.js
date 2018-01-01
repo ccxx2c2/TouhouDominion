@@ -133,6 +133,7 @@ class User{
         this.aCardUsing = props.aCardUsing || false;
         this.actionUsed = props.actionUsed || 0;
         this.onGain = props.onGain || {};
+        this.beforeGain = props.beforeGain || {};
         this.onLost = props.onLost || {};
         this.cardAmount = props.cardAmount || 0;
         this.temp = props.temp || [];
@@ -143,6 +144,10 @@ class User{
         let room = rooms[this.room];
         if(room[src + "Remain"][index] <= 0) return;
         let card = new DomCard(room[src][index]);
+        for(let cardid in this.beforeGain){
+          let eff = this.beforeGain[cardid];
+          if(eff.func(this, exFunctions, eff.from, card,to) === false) return;//youmei gumi
+        }
         card.no = room[src + "Total"][index] - room[src + "Remain"][index] + 1;
         card.id = (src === 'basic' ? 20 : 0) * 100000 + index * 100 + card.no;
         card.index = index;
@@ -159,7 +164,7 @@ class User{
         //affect ongain effects
         if(card.onGain !== undefined){
             card.onGain(this,exFunctions,card);
-        }
+        };
         if(place === 'bottom')
           this[to].push(card);
         else if (place === 'top'){
@@ -258,14 +263,15 @@ class User{
       console.log("in trash cards");
         if(amount == 'all'){
             this[from].forEach( card => {
-            f.sendRep(this.socket,this,`${this.socket.username}废弃了${card.chname}`);
+            sendRep(this.socket,this,`${this.socket.username}废弃了${card.chname}`);
                 if(card.vp !== undefined){
                     this.vp -= card.vp;
                 }
                 for(let cardid in this.onLost){
                   let eff = this.onLost[cardid];
-                  eff.func(this, exFunctions, eff.card, card);
+                  eff.func(this, exFunctions, eff.from, card);
                 }
+                if(card.onTrash !== undefined && !card.onTrash(this,exFunctions)) return;//mokou
                 delete this.onGain[card.id];
                 delete this.onLost[card.id];
             });
@@ -279,15 +285,17 @@ class User{
           myamount.forEach( index =>{
               console.log(index, this[from][index].chname, this[from][index].no,this[from][index].vp,this.vp);
               let card = this[from][index];
-              f.sendRep(this.socket,this,`${this.socket.username}废弃了${card.chname}`);
               if(typeof(this[from][index].vp) !== "undefined"){
                 this.vp -= this[from][index].vp;
               }
+              if(card.onTrash !== undefined && !card.onTrash(this,exFunctions)) return;//mokou
+              sendRep(this.socket,this,`${this.socket.username}废弃了${card.chname}`);
               delete this.onGain[card.id];
               delete this.onLost[card.id];
               for(let cardid in this.onLost){
                 let eff = this.onLost[cardid];
-                eff.func(this, exFunctions, eff.card, card);
+                console.log(`in ${eff.from.chname} onLost`);
+                eff.func(this, exFunctions, eff.from, card);
               }
               room.trash.push(this[from].splice(index, 1)[0]);
           });
@@ -368,7 +376,7 @@ class DomCard extends Card{
         this.use = props.use || undefined ;
         this.onGain = props.onGain || undefined;
         this.onAttack = props.onAttack || undefined;
-        this.onDraw = props.onDraw || undefined;
+        this.onTrash = props.onTrash || undefined;
     }
 }
 
@@ -415,7 +423,7 @@ function getCard(target, src, limit, index){
               Object.assign(target[i], src[i], expansion[src[i].number-1]);
               target[i] = new DomCard(target[i]);
               target[i].index = i;
-              console.log(target[i].chname,target[i].index, i);
+              console.log(target[i].chname,i);
               break;
           }
         }
@@ -591,7 +599,7 @@ function ask(args){
               if(cards.length < min){
                   let tmpCards = [];
                   rooms[socket.room].users[socket.username][area].forEach((e,i)=>{
-                      if(!(cards.includes(i)) && filter[i]) tmpCards.push(i);
+                      if(!(cards.includes(i)) && (myFilter === undefined || myFilter[i])) tmpCards.push(i);
                   });
                   tmpCards.shuffle();
                   cards = cards.concat(tmpCards.slice(0,min - cards.length));

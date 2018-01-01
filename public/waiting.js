@@ -31,8 +31,8 @@ var app2 = new Vue({
             'type': 'checkbox',
             'text': '指定起始卡包：',
             '红': true,
-            '妖': false,
-            '永': false,
+            '妖': true,
+            '永': true,
             'Ex': false,
             '风': false,
             '地': false
