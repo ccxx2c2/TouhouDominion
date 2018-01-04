@@ -140,13 +140,13 @@ class User{
         this.gained = props.gained || {supply:{},basic:{}};//src:{index:type}
     }
 
-    gainCard(to, src, index, type, place = 'bottom'){
+    async gainCard(to, src, index, type, place = 'bottom'){
         let room = rooms[this.room];
         if(room[src + "Remain"][index] <= 0) return;
         let card = new DomCard(room[src][index]);
         for(let cardid in this.beforeGain){
           let eff = this.beforeGain[cardid];
-          if(eff.func(this, exFunctions, eff.from, card,to) === false) return;//youmei gumi
+          if(await eff.func(this, exFunctions, eff.from, card,to) === false) return;//youmei gumi
         }
         card.no = room[src + "Total"][index] - room[src + "Remain"][index] + 1;
         card.id = (src === 'basic' ? 20 : 0) * 100000 + index * 100 + card.no;
@@ -508,8 +508,9 @@ function initialGame(roomNum){
         room.vps.push(room.users[userkey].vp);
     });
 
-
+    room.show();
     for(let socket of room.sockets){
+        console.log(socket.username);
         socket.paging = "battle";
         socket.emit("statusUpdate",{
             supplyRemain: room.supplyRemain,

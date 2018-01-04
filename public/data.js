@@ -150,7 +150,7 @@ var cardSource=[
                 if(otherUser.socket.username === user.socket.username) continue;
                 await otherUser.attacked(that);
                 if(otherUser.affect){
-                  otherUser.gainCard('drops','basic',6,'gain');
+                  await otherUser.gainCard('drops','basic',6,'gain');
                 }
                 otherUser.affect = true;
             }
@@ -463,7 +463,7 @@ var cardSource=[
               myFilter: (card) => {return card.cost <= 4 ;}
             });
             cardkey = cardkey[0];
-            user.gainCard('drops', cardkey.src, cardkey.index, 'gain');
+            await user.gainCard('drops', cardkey.src, cardkey.index, 'gain');
             console.log(cardkey);
         }
     },{
@@ -598,7 +598,7 @@ var cardSource=[
             });
 
             cardkey = cardkey[0];
-            user.gainCard('drops', cardkey.src, cardkey.index, 'gain');
+            await user.gainCard('drops', cardkey.src, cardkey.index, 'gain');
             console.log(cardkey);
         }
     },{
@@ -664,7 +664,7 @@ var cardSource=[
               myFilter: (card) => {return card.cost <= 5;}
             });
             cardkey = cardkey[0];
-            user.gainCard('drops', cardkey.src, cardkey.index, 'gain');
+            await user.gainCard('drops', cardkey.src, cardkey.index, 'gain');
             console.log(cardkey);
         }
     },{
@@ -686,7 +686,7 @@ var cardSource=[
         remark:'',
         stage:'自机',
         use:async (user,f,that)=>{
-            user.gainCard('deck','basic',1,'gain','top');
+            await user.gainCard('deck','basic',1,'gain','top');
             for(let otherUserkey in f.rooms[user.room].users){
                 let otherUser = f.rooms[user.room].users[otherUserkey];
                 if(otherUser.socket.username === user.socket.username) continue;
@@ -701,8 +701,8 @@ var cardSource=[
                   	max: 1,
                     myFilter: (card) => {return card.type === '胜利点';}
                   });
-                  otherUser.drop(cardkey,'hand','deck','top');
                   otherUser.showCard(cardkey.length > 0 ? cardkey : 'all');
+                  otherUser.drop(cardkey,'hand','deck','top');
                 }
                 otherUser.affect = true;
             }
@@ -897,7 +897,7 @@ var cardSource=[
                 if(otherUser.affect){
                   otherUser.drop([0],'deck');
                   f.sendRep(otherUser.socket,otherUser,`${otherUser.socket.username}从牌堆顶弃置了${otherUser.deck[0].chname}`);
-                  otherUser.gainCard('deck','basic',6,'gain','top');
+                  await otherUser.gainCard('deck','basic',6,'gain','top');
                 }
                 otherUser.affect = true;
             }
@@ -1191,7 +1191,7 @@ var cardSource=[
           });
           cardkey = cardkey[0];
           if(cardkey && lastUser.gained[cardkey.src][cardkey.index])
-            user.gainCard('drops', cardkey.src, cardkey.index, 'gain');
+            await user.gainCard('drops', cardkey.src, cardkey.index, 'gain');
         },
     },{
         number:17,
@@ -1417,10 +1417,10 @@ var cardSource=[
             });
             if(cardkey[0] !== undefined){
               user.showCard(cardkey);
-              user.gainCard('drops','basic',2,'gain');
+              await user.gainCard('hand','basic',2,'gain');
             }
             else{
-              user.gainCard('drops','basic',1,'gain');
+              await user.gainCard('hand','basic',1,'gain');
             }
         }
     },{
@@ -1613,7 +1613,7 @@ var cardSource=[
               myFilter: (card) =>{return card.cost <= 5;}
             });
             cardkey = cardkey[0];
-            user.gainCard('drops', cardkey.src, cardkey.index, 'gain');
+            await user.gainCard('drops', cardkey.src, cardkey.index, 'gain');
             console.log(cardkey);
         }
     },{
@@ -1657,7 +1657,7 @@ var cardSource=[
               myFilter: (card)=>{return card.type === '资源' && card.cost <= cost;}
             });
             cardkey = cardkey[0];
-            user.gainCard('drops', cardkey.src, cardkey.index, 'gain');
+            await user.gainCard('drops', cardkey.src, cardkey.index, 'gain');
             console.log(cardkey);
         }
     },{
@@ -1778,7 +1778,7 @@ var cardSource=[
               user.drop(cardkey,'hand','deck','top');
               f.sendRep(user.socket,user,`放回一张`);
             }
-            if(choices[2]) {user.gainCard('drops','basic',0,'gain');f.sendRep(user.socket,user,`获得1张赛钱`);}
+            if(choices[2]) {await user.gainCard('drops','basic',0,'gain');f.sendRep(user.socket,user,`获得1张赛钱`);}
             choices = await f.ask({
                 	socket: user.socket,
                 	title: that.chname,
@@ -1790,7 +1790,7 @@ var cardSource=[
             });
             if(choices[0]) {user.gainMoney(3);f.sendRep(user.socket,user,`金钱 +3`);}
             if(choices[1]) {user.trash('all','hand');f.sendRep(user.socket,user,`废弃了全部手牌`);}
-            if(choices[2]) {user.gainCard('drops','basic',4,'gain');f.sendRep(user.socket,user,`获得1张3分`);}
+            if(choices[2]) {await user.gainCard('drops','basic',4,'gain');f.sendRep(user.socket,user,`获得1张3分`);}
         }
     },{
         number:12,
@@ -1838,7 +1838,7 @@ var cardSource=[
                         otherUser.drop(cardkey,'hand');
                       f.sendRep(user.socket,user,`${otherUser.socket.username}弃置了2张牌`);
                     }
-                  if(choices[1]){otherUser.gainCard('hand','basic',6,'gain');f.sendRep(user.socket,user,`${otherUser.socket.username}入手1张负分`);}
+                  if(choices[1]){await otherUser.gainCard('hand','basic',6,'gain');f.sendRep(user.socket,user,`${otherUser.socket.username}入手1张负分`);}
                   otherUser.affect = true;
               }
         }
@@ -1905,14 +1905,14 @@ var cardSource=[
             	content: "是否将一张「お賽銭」加入手牌？",
             	area: 'yn'
             })){
-              user.gainCard('hand','basic', 0, 'gain');
+              await user.gainCard('hand','basic', 0, 'gain');
             }
         },
-        onGain:(user,f,that) =>{
+        onGain:async (user,f,that) =>{
           for(let otherUserkey in f.rooms[user.room].users){
             let otherUser = f.rooms[user.room].users[otherUserkey];
               if(otherUser.socket.username === user.socket.username) continue;
-
+              await otherUser.gainCard('drops','basic',6,'gain');
           }
         }
     },{
@@ -2086,21 +2086,22 @@ var cardSource=[
             	max: 1
             });
             for(let i = user.hand[cardkey[0]].cost; i > 0; i -= 1){
-                user.gainCard('drops','basic',1,'gain');
+                await user.gainCard('drops','basic',1,'gain');
             }
             user.trash(cardkey,'hand');
         },
-        onGain:(user,f,that)=>{
+        onGain:async (user,f,that)=>{
             user.beforeGain[that.id] = {
                 from: that,
                 func: async (user,f,that,card,to)=>{
-                  if(!(user.hand.includes(that))) return;
+                  if(!(user.hand.includes(that))
+                || card.chname === '奉纳米') return;
                   if(await f.ask({
                     socket: user.socket,
                     title: that.chname,
                     content: `是否展示${that.chname}并改为获得奉纳米？`,
                     area:  'yn'
-                  })){user.showCard([user.hand.indexOf(that)]);user.gainCard('drops','basic',1,'gain');return false;}
+                  })){user.showCard([user.hand.indexOf(that)]);await user.gainCard('drops','basic',1,'gain');return false;}
                 }
             };
         },
@@ -2386,9 +2387,10 @@ var cardSource=[
                     	max:  1,
                       myFilter: (card) => {return card.type === '负分';}
                     });
-                    if(typeof(cardkey.length) === undefined){
-                      otherUser.gainCard('drops','basic',0,'gain');
-                      otherUser.gainCard('drops','basic',6,'gain');
+                    if(typeof(cardkey.length) === undefined
+                  || cardkey.length < 1){
+                      await otherUser.gainCard('drops','basic',0,'gain');
+                      await otherUser.gainCard('drops','basic',6,'gain');
                     }
                     else {otherUser.drop(cardkey,'hand');}
                 }
@@ -2488,7 +2490,7 @@ var cardSource=[
               myFilter: (card) =>{return card.cost <= cost;}
             });
             cardkey = cardkey[0];
-            user.gainCard('drops', cardkey.src, cardkey.index, 'gain');
+            await user.gainCard('drops', cardkey.src, cardkey.index, 'gain');
             console.log(cardkey);
         }
     },{
@@ -2574,11 +2576,11 @@ var cardSource=[
             user.drop(cardkey,'hand');
             console.log(cardkey);
         },
-        onGain:(user,f,that) =>{
+        onGain:async (user,f,that) =>{
           for(let otherUserkey in f.rooms[user.room].users){
               let otherUser = f.rooms[user.room].users[otherUserkey];
               if(otherUser.socket.username === user.socket.username) continue;
-              otherUser.gainCard('drops','basic',1,'gain');
+              await otherUser.gainCard('drops','basic',1,'gain');
           }
         }
     },{
@@ -2843,7 +2845,7 @@ var cardSource=[
                   myFilter: (card) =>{return Number(card.cost) === cost;}
                 });
                 cardkey = cardkey[0];
-                user.gainCard('drops', cardkey.src, cardkey.index, 'gain');
+                await user.gainCard('drops', cardkey.src, cardkey.index, 'gain');
                 console.log(cardkey);
             }
         }
@@ -3343,7 +3345,7 @@ var cardSource=[
               myFilter: (card) =>{return card.cost <= 4;}
             });
             cardkey = cardkey[0];
-            user.gainCard('drops', cardkey.src, cardkey.index, 'gain');
+            await user.gainCard('drops', cardkey.src, cardkey.index, 'gain');
             console.log(cardkey);
             let type = f.rooms[user.room][cardkey.src][cardkey.index].type;
             if(type === '行动'){
@@ -3647,15 +3649,15 @@ var cardSource=[
             cardkey = await f.ask({
             	socket: user.socket,
             	title: that.chname,
-            	content: `请选择要获得的费用最多为${cost}的牌`,
+            	content: `请选择要获得的费用为${cost}的牌`,
             	area: "kingdom",
             	min: 0,
             	max: 1,
-              myFilter: (card) =>{return card.cost <= cost;}
+              myFilter: (card) =>{return card.cost === cost;}
             });
             if(cardkey.length === 0) return;
             cardkey = cardkey[0];
-            user.gainCard('drops', cardkey.src, cardkey.index, 'gain');
+            await user.gainCard('drops', cardkey.src, cardkey.index, 'gain');
             console.log(cardkey);
         }
     }],
