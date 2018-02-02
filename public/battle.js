@@ -7,7 +7,7 @@ var app3 = new Vue({
         supplyRemain: [12,12,12,12,12,12,12,12,12,12],
         cardArray: [],
         lens: [],//lengths of each expansions
-        language: 0,
+        la: 'ch',
         binded: 0,
         username: username,
         myCardLength: 0,
@@ -40,7 +40,6 @@ var app3 = new Vue({
     created: function(){
     },
     methods: {
-        name: app2.name,
         filename: app2.filename,
         title: app2.title,
         description: app2.description,
@@ -227,7 +226,7 @@ socket.on('statusUpdate', (data) =>{
 
     if(data.usingCard){
         app3.cardInAction.push(data.usingCard);
-        addMessage(`${app3.nowPlayer} 使用了 ${data.usingCard.chname}`, 'rep');
+        addMessage(`${app3.nowPlayer} 使用了 ${data.usingCard.name[app3.la]}`, 'rep');
     }
 
     if(data.nowVp){

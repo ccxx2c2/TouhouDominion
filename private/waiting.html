@@ -25,7 +25,7 @@
                         :data-placement="(index/5>=1)?'bottom':'top'"
                         data-trigger='hover' :data-original-title="title(card)"
                          data-html="true" :data-content="description(card).split('\n').join('<br>')"
-                         :src="filename(card)" :alt="name(card)" @click="change(index)"/>
+                         :src="filename(card)" :alt="card.name[la]" @click="change(index)"/>
                         <div v-if="index%5===4" class="clearfix visible-xs-block visible-sm-block visible-md-block visible-lg-block"></div>
                     </template>
                 </div>

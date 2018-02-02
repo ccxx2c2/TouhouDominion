@@ -26,7 +26,7 @@
                     {{basicRemain[index]}}
                   </span>
                   <img :class="cssGenerate('basic',card,index)"
-                   :src="filename(card)" :alt="name(card)" @click="buy(index,'basic')"/>
+                   :src="filename(card)" :alt="card.name[la]" @click="buy(index,'basic')"/>
               </div>
               <div v-if="index%2===1" class="clearfix visible-block"></div>
           </template>
@@ -49,7 +49,7 @@
                               data-container="body" data-toggle="popover" data-placement="bottom"
                               data-trigger='hover' :data-original-title="title(card)"
                               data-html="true" :data-content="description(card).split('\n').join('<br>')"
-                              :src="filename(card)" :alt="name(card)" @click="buy(index,'supply')"/>
+                              :src="filename(card)" :alt="card.name[la]" @click="buy(index,'supply')"/>
                           </div>
                           <div v-if="index%5===4" class="clearfix visible-xs-block
                           visible-sm-block visible-md-block visible-lg-block">
@@ -69,13 +69,13 @@
           </div>
           <div id="cardInAction" >
               <template v-for="(card,index) in cardInAction">
-                      <img class="CardInAction" :src="filename(card)" :alt="name(card)"
+                      <img class="CardInAction" :src="filename(card)" :alt="card.name[la]"
                       :style="'width: ' + cardInAction.length > 13 ? '5%' : cardInAction.length > 10 ? '8%' : '10%' "/>
                   </template>
           </div>
           <div id="cardInHand">
               <template v-for="(card,index) in myHand">
-                      <img :class="cssGenerate('hand',card,index)" :src="filename(card)" :alt="name(card)" @click="use(index)"
+                      <img :class="cssGenerate('hand',card,index)" :src="filename(card)" :alt="card.name[la]" @click="use(index)"
                        :style="'width: ' + myHand.length > 13 ? '5%' : myHand.length > 10 ? '8%' : '10%' "/>
                   </template>
           </div>

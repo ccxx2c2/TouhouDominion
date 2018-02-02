@@ -6,7 +6,7 @@ var app2 = new Vue({
         supply: [],
         noin: [[], [], [26,27,28,29,30], [], [19,20,21], [], [1,2,3,4,5,6,7]],
         cardArray: [],
-        language: 0,
+        la: 'ch',
         lim: 10,
         binded: 0,
         options: {
@@ -63,13 +63,6 @@ var app2 = new Vue({
                 index: index
             });
         },
-        name: function(card){
-            switch(this.language){
-                case 0:return card.chname;
-                case 1:return card.janame;
-                case 2:return card.enname;
-            }
-        },
         filename: function(card){
             let num = "00" + card.number;
             num = num.slice(num.length - 3, num.length);
@@ -79,22 +72,11 @@ var app2 = new Vue({
               let str = card.types.reduce((a, b) => a + ' - ' + b);
               str += ' ' + card.expansion;
               str += ' ' + card.cost;
-              return this.name(card) + ' ' + str;
+              return card.name[this.la] + ' ' + str;
           },
         description: function(card){
-          let str = '';
-            switch(this.language){
-                case 0: str = card.cheffect + (card.chspecial === '' ? ''
-                : `\n————————\n${card.chspecial}`);
-                    break;
-                case 1: str = card.jaeffect + (card.jaspecial === '' ? ''
-                : `\n————————\n${card.jaspecial}`);
-                    break;
-                case 2: str = card.eneffect + (card.enspecial === '' ? ''
-                : `\n————————\n${card.enspecial}`);
-                    break;
-            }
-            return str;
+          return card.effect[this.la] + (card.special[this.la] === '' ? ''
+          : `\n————————\n${card.special[this.la]}`);
         },
         bind: function(){
             //functions for bootstrap
