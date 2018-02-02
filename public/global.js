@@ -153,7 +153,7 @@ socket.on('user joined',(data) => {
 });
 
 socket.on('user left', (data) => {
-    if($("#room_instance").length>0){
+    if($("#room_instance").length > 0){
       addMessage(`用户${data.username}掉出了游戏，游戏结束。`,'announce','warning');
     }
     else {

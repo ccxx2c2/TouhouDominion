@@ -76,9 +76,7 @@ var app2 = new Vue({
             return `./pic/${card.expansion}/${card.expansion}${num}.jpg`;
         },
         title: function(card){
-              let str = card.type;
-              str += card.type2 !== '' ? '-' + card.type2 : '';
-              str += card.type3 !== '' ? '-' + card.type3 : '';
+              let str = card.types.reduce((a, b) => a + ' - ' + b);
               str += ' ' + card.expansion;
               str += ' ' + card.cost;
               return this.name(card) + ' ' + str;

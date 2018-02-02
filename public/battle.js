@@ -178,8 +178,8 @@ var app3 = new Vue({
           }
            if(place === 'hand'){
              if(app3.asking || ((app3.nowPlayer == username)
-             && ((app3.nowStage == 'Buy') && (card.type == '资源')
-                ||　(app3.nowStage == 'Action') && (card.type == '行动')))){
+             && ((app3.nowStage == 'Buy') && (card.types.includes('资源'))
+                ||　(app3.nowStage == 'Action') && (card.types.includes('行动'))))){
                  ret += 'cardActive ';
              }
              return 'CardInHand ' + ret;
@@ -187,6 +187,12 @@ var app3 = new Vue({
         },
         buttonAvailable: () => {
             return app3.modal_cards.length < app3.modal_min && jQuery('.selectable').length > 0;
+        },
+        choiceAvailable: () => {
+            return (app3.modal_max <= $(".panel-body").find("input[type ='checkbox']")
+                                    .map(e => {$(e).prop("checked");})
+                                    .filter(e => e)
+                                    .length);
         },
     },
     updated: function(){
@@ -196,6 +202,7 @@ var app3 = new Vue({
 
 
 socket.on('statusUpdate', (data) =>{
+  console.log('get');
     app3.supplyRemain = data.supplyRemain || app3.supplyRemain ;
     app3.basicRemain = data.basicRemain || app3.basicRemain;
     if(data.usersName){
@@ -244,15 +251,15 @@ socket.on('statusUpdate', (data) =>{
           addedStage = data.nowStage;
       }
 
-      if(app3.nowPlayer === username){
+      if(app3.nowPlayer === username && data.fresh === undefined){
           if(app3.nowStage === 'Action' && !app3.aCardUsing){
               if(app3.nowAction === 0){
                   app3.nextStage();
                   return;
               }
               let action = 0;
-              for(let cardkey in app3.myHand){
-                  action += app3.myHand[cardkey].type === "行动" ? 1 : 0;
+              for(let card of app3.myHand){
+                  action += card.types.includes("行动") ? 1 : 0;
               }
               if(action === 0){
                   app3.nextStage();
@@ -314,4 +321,5 @@ socket.on('end game',() => {
     else {
         addMessage("you lose!",'announce','info');
     }
+    host = '';
 });

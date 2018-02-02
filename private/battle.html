@@ -8,7 +8,7 @@
           <div class="panel-body">
             {{modal_content}}
             <template v-for = "choice in modal_filter" v-if="modal_area === 'check'">
-              <br /><input type="checkbox" :name="choice">{{choice}}</input>
+              <br /><input type="checkbox" :name="choice" :disabled = "choiceAvailable()">{{choice}}</input>
             </template>
           </div>
           <div class="panel-footer">
