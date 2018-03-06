@@ -33,7 +33,7 @@
           <div id="cardMount">
               <p>手牌:{{nowCard}} 行动:{{nowAction}}</p>
               <p>金钱:{{nowMoney}} 购买:{{nowBuy}}</p>
-              <p>牌堆:{{myCardLength}}</p>
+              <p>牌堆:{{myCardLength}} 持续:{{nowDuration.length}}</p>
           </div>
       </section>
       <section class="mainview">
@@ -63,6 +63,7 @@
                       <div class="npc" :style="'top:'+(index*otherIndex+5)+'%'">
                           <span class="name">{{name}}</span><br />
                           <span class="victoryPoint">VP:{{otherPoint[index]}}</span>
+                          <span v-if="otherDuration[index] > 0">持续:{{otherDuration[index].length}}</span>
                       </div>
                   </template>
               </div>

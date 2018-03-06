@@ -19,11 +19,13 @@ var app3 = new Vue({
         nowBuy: 0,
         nowAction: 0,
         nowCard: 0,
+        nowDuration: 0,
         nowStage: 'Action',
         otherName: [],
         otherCard: [],
         otherDrop: [],
         otherPoint: [3,3,3,3,3],
+        otherDuration: [[],[],[],[],[]],
         trash: [],
         nowPlayer: "",
         otherIndex: 10,
@@ -36,6 +38,7 @@ var app3 = new Vue({
         modal_filter: [],
         aCardUsing: false,
         asking: false,
+        freshed: false,
     },
     created: function(){
     },
@@ -109,8 +112,10 @@ var app3 = new Vue({
             }
         },
         nextStage: () => {
-            if(app3.nowPlayer === username)
+            if(app3.nowPlayer === username && !app3.freshed){
                 socket.emit('nextStage');
+                app3.freshed = true;
+            }
         },
         sendAnswer: (select)=>{
           app3.asking = false;
@@ -202,6 +207,11 @@ var app3 = new Vue({
 
 socket.on('statusUpdate', (data) =>{
   console.log('get');
+  console.log(data.nowBuy);
+  
+  console.log(app3.nowBuy);
+  console.log(app3.nowStage);
+  console.log(data.nowStage);
     app3.supplyRemain = data.supplyRemain || app3.supplyRemain ;
     app3.basicRemain = data.basicRemain || app3.basicRemain;
     if(data.usersName){
@@ -218,7 +228,9 @@ socket.on('statusUpdate', (data) =>{
     app3.nowMoney = data.nowMoney === undefined ? app3.nowMoney : data.nowMoney;
     app3.nowBuy = data.nowBuy === undefined ? app3.nowBuy : data.nowBuy;
     app3.nowPlayer = data.nowPlayer === undefined ? app3.nowPlayer : data.nowPlayer;
+    
     app3.nowStage = data.nowStage === undefined ? app3.nowStage : data.nowStage;
+    
     app3.myDrop = data.drops === undefined ? app3.myDrop : data.drops;
     app3.myHand = data.hand === undefined ? app3.myHand : data.hand ;
     app3.myCardLength = data.cardsLength === undefined ? app3.myCardLength : data.cardsLength ;
@@ -232,15 +244,24 @@ socket.on('statusUpdate', (data) =>{
     if(data.nowVp){
         if(app3.nowPlayer === username){
             app3.myPoint = data.nowVp;
+            app3.nowDuration = data.nowDuration;
         }
         else{
             app3.otherPoint[app3.otherName.indexOf(app3.nowPlayer)] = data.nowVp;
+            app3.otherDuration[app3.otherName.indexOf(app3.nowPlayer)] = data.nowDuration;
+
         }
     }
-    if(data.myVp) app3.myPoint = data.myVp;
+    if(data.myVp) {
+        app3.myPoint = data.myVp;
+        app3.nowDuration = data.nowDuration;
+    }
     if(data.otherVp){
       app3.otherPoint[app3.otherName.indexOf(data.oneName)] = data.otherVp;
+      app3.otherDuration[app3.otherName.indexOf(data.oneName)] = data.nowDuration;
     }
+
+
     if(data.nowStage !== undefined){
       if(data.nowStage !== addedStage){
           if(data.nowStage === 'Action'){
@@ -248,9 +269,11 @@ socket.on('statusUpdate', (data) =>{
           }
           addMessage(`　${app3.nowStage}阶段`,'rep');
           addedStage = data.nowStage;
+          app3.freshed = false;
       }
 
       if(app3.nowPlayer === username && data.fresh === undefined){
+          
           if(app3.nowStage === 'Action' && !app3.aCardUsing){
               if(app3.nowAction === 0){
                   app3.nextStage();

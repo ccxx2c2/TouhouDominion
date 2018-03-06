@@ -86,7 +86,7 @@ function verify(data){
     else if(data.type === "change"){
         this.leave(this.room);
         delete rooms[this.room].users[this.username];
-        rooms[this.room].thiss.remove(this);
+        rooms[this.room].sockets.remove(this);
         this.to(this.room).emit('user left',{
             username: this.username,
         });
@@ -134,6 +134,7 @@ function verify(data){
 }
 
 function generate(data){ // emit generateCard
+    if(typeof(this.room) === 'undefined' || typeof(rooms[this.room]) === 'undefined')return;
     if(rooms[this.room].paging !== "waiting") return;
     if(this.username !== rooms[this.room].host){
         return;
@@ -184,19 +185,40 @@ function onReady(prepared){ //emit otherReady, startGame
     });
 }
 
-function nextStage(){
+async function nextStage(){
     if(this.paging !== "battle") return;
     let room = rooms[this.room];
     let user = room.users[this.username];
     if(this.username !== room.nowPlayer) return;
+    console.log("in nextstage");
 
     room.nowStage ++;
     // Action
     if(room.nowStage % 3 === 0){
         [user.money, user.action, user.buy, user.actionUsed] = [0, 1, 1, 0];
-        room.nowPlayerPoint ++;
+        if(user.extraTurn === true){
+            user.extraTurn = 'done';
+        }
+        else {
+            user.extraTurn = false;
+            room.nowPlayerPoint ++;
+        }
         room.nowPlayer = room.userOrder[room.nowPlayerPoint % room.userOrder.length];
+        let np = room.users[room.nowPlayer];
+        [np.money, np.action, np.buy, np.actionUsed] = [0, 1, 1, 0];
         room.users[room.nowPlayer].gained = {supply:[],basic:[]};
+        room.users[room.nowPlayer].duration.forEach((card) => {
+            room.users[room.nowPlayer].actionArea.push(card);
+            card.duration(room.users[room.nowPlayer],card);
+            np.socket.emit("statusUpdate",{
+                usingCard: card,
+              });
+            np.socket.to(np.socket.room).emit("statusUpdate",{
+                usingCard: card,
+              });
+        });
+        room.users[room.nowPlayer].duration = [];
+        generalStatus(room.users[room.nowPlayer].socket);
     }
     // Buy
     if(room.nowStage % 3 === 1){
@@ -204,12 +226,18 @@ function nextStage(){
     }
     // Cleanup
     if(room.nowStage % 3 == 2){
+       // user.actionArea = user.actionArea.filter(card => typeof(card.duration) === 'undefined');
         user.actionArea.forEach((card,index)=>{
            card.used = false;
         });
         user.drop('all','actionArea');
         user.drop('all','hand');
-        user.draw(5);
+        if(user.extraTurn === true){
+            user.draw(3);
+        }
+        else {
+            user.draw(5);
+        };
     }
     console.log(`${new Date().toLocaleString()} in room ${this.room}`);
     console.log(`in stage ${room.nowStage}`);
@@ -238,7 +266,7 @@ async function useCard(index){
 
     usingCard.used = true;
     user.aCardUsing = true;
-    user.actionArea.push(usingCard);
+    if(typeof(usingCard.duration) === 'undefined')user.actionArea.push(usingCard);
     user.hand.splice(index,1);//affect state update
 
     if(usingCard.types.includes('行动')) {
@@ -288,12 +316,23 @@ function disconnect(){ //emit userleft
     if(this.paging === 'login'){
         console.log('a user disconnected');
     }
-    else{
+    else if(this.paging === 'result'){
+        console.log(this.username + ' disconnected');
+        unlogUserList.push(this.username);
+    }
+    else if(this.paging === 'battle'){
         let room = rooms[this.room];
         console.log(this.username + ' disconnected');
-        if(this.paging === 'battle'){
-            room.endGame();
-        }
+        room.endGame();
+        room.show();
+        unlogUserList.push(this.username);
+        this.to(this.room).emit('user left',{
+            username: this.username
+        });
+    }
+    else {
+        let room = rooms[this.room];
+        console.log(this.username + ' disconnected');
         rooms[this.room].sockets.remove(this);
         this.leave(this.room);
         delete rooms[this.room].users[this.username];

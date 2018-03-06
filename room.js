@@ -190,7 +190,10 @@ class Room{
         console.log(`${new Date().toLocaleString()} game in room#${this.no} ended`);
         for(let socket of this.sockets){
           socket.emit("end game");
-          socket.paging = "waiting";
+          socket.paging = "result";
+          this.sockets.remove(socket);
+          socket.leave(socket.room);
+          delete this.users[socket.username];
         }
         this.paging = "waiting";
 

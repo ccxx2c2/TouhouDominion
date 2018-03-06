@@ -1,5 +1,5 @@
 if(typeof(module) == "undefined"){
-    module = {};
+    var module = {};
 }
 else{
   var g = require(__dirname+'/../global.js');
@@ -811,7 +811,15 @@ var cardSource=[
           ja: '',
         },
         remark:'',
-        stage:'自机'
+        stage:'自机',
+        use:async (user,that) => {
+            if(!user.extraTurn){
+              user.extraTurn = true;
+            }
+            user.duration.push(that);
+        },
+        duration:async (user,that) => {
+        }
     },{
         number:3,
         name: {
@@ -865,7 +873,15 @@ var cardSource=[
           ja: '',
         },
         remark:'',
-        stage:'1'
+        stage:'1',
+        use:async (user,that) => {
+            user.draw(1);
+            user.gainAction(1);
+            user.duration.push(that);
+        },
+        duration:async (user,that) => {
+          user.draw(1);
+        }
     },{
         number:5,
         name: {
@@ -959,7 +975,28 @@ var cardSource=[
           ja: '',
         },
         remark:'',
-        stage:'2'
+        stage:'2',
+        use:async (user,that) => {
+            user.draw(1);
+            user.gainAction(1);
+            user.duration.push(that);
+            let cardkey = await ask({
+              socket: user.socket,
+              title: that.name.ch,
+              content: `请选择要放到一旁的1张牌`,
+              area: "hand",
+              min: 1,
+              max: 1
+            })[0];
+            that.remark = user.hand.splice(cardkey,1)[0];
+        },
+        duration:async (user,that) => {
+            user.hand.push(that.remark);
+            that.remark = '';
+            user.socket.emit("statusUpdate", {
+                  hand: user.hand,
+            });
+        }
     },{
         number:8,
         name: {
@@ -1115,7 +1152,19 @@ var cardSource=[
           ja: '',
         },
         remark:'',
-        stage:'ex'
+        stage:'ex',
+        use:async (user,that) => {
+            if(user.hand.length > 0) that.remark = true;
+            user.drop('all','hand');
+            user.duration.push(that);
+        },
+        duration:async (user,that) => {
+            if(that.remark !== true) return;
+            user.draw(5);
+            user.gainBuy(1);
+            user.gainAction(1);
+            that.remark = false;
+        }
     },{
         number:13,
         name: {
@@ -1946,7 +1995,16 @@ var cardSource=[
           ja: '',
         },
         remark:'',
-        stage:'3'
+        stage:'3',
+        use:async (user,that) => {
+            user.draw(2);
+            user.gainBuy(1);
+            user.duration.push(that);
+        },
+        duration:async (user,that) => {
+          user.draw(2);
+          user.gainBuy(1);
+        }
     },{
         number:14,
         name: {
@@ -2787,7 +2845,14 @@ var cardSource=[
           ja: '',
         },
         remark:'',
-        stage:'1'
+        stage:'1',
+        use:async (user,that) => {
+            user.gainMoney(2);
+            user.duration.push(that);
+        },
+        duration:async (user,that) => {
+          user.gainMoney(2);
+        }
     },{
         number:17,
         name: {
@@ -2860,7 +2925,7 @@ var cardSource=[
         },
         remark:'',
         stage:'6',
-        use:async (user,that)=>{
+       /* use:async (user,that)=>{
             let show = user.show(1);
             let resource = [];
             await user.showCard([show.length - 1],'deck');
@@ -2872,7 +2937,7 @@ var cardSource=[
             }
             show.pop();
             user.drop(show.map((c,i) => i),'deck');
-        }
+        }*/
     },{
         number:20,
         name: {
@@ -3272,7 +3337,7 @@ var cardSource=[
         },
         expansion:'地灵殿',
         types:['行动'],
-        cost:'4+',
+        cost:'4',
         effect: {
           ch: '手牌 +1 行动次数 +1 展示你牌堆顶的1张牌。 如果它是行动牌，那么执行这张牌。',
           ja: '+1 カードを引く +1 アクション あなたのデッキの一番上のカードを公開する。 それがアクションの場合、そのカードをプレイする。',
@@ -3368,7 +3433,7 @@ var cardSource=[
         cost:'1',
         effect: {
           ch: '',
-          ja: '-',
+          ja: '',
         },
         special: {
           ch: '你购入1张胜利点牌的时候，你可以从手牌中将这张牌移出游戏。',
@@ -3555,7 +3620,7 @@ var cardSource=[
         },
         remark:'',
         stage:'',
-        use:async (user,that)=>{
+        /*use:async (user,that)=>{
             user.gainMoney(2);
             let otherUsers = Object.keys(rooms[user.room].users)
               .map(key => rooms[user.room].users[key])
@@ -3576,7 +3641,7 @@ var cardSource=[
               user.affect = true;
             })(user));
             await Promise.all(promises);
-        }
+        }*/
     },{
         number:6,
         name: {
@@ -3615,7 +3680,7 @@ var cardSource=[
         },
         remark:'',
         stage:'',
-        use:async (user,that)=>{
+        /*use:async (user,that)=>{
             user.draw(3);
             let otherUsers = Object.keys(rooms[user.room].users)
               .map(key => rooms[user.room].users[key])
@@ -3633,7 +3698,7 @@ var cardSource=[
               user.affect = true;
             })(user));
             await Promise.all(promises);
-        }
+        }*/
     },{
         number:8,
         name: {
@@ -3652,7 +3717,16 @@ var cardSource=[
           ja: '',
         },
         remark:'',
-        stage:''
+        stage:'',
+        use:async (user,that) => {
+            user.gainMoney(1);
+            user.gainAction(2);
+            user.duration.push(that);
+        },
+        duration:async (user,that) => {
+          user.gainMoney(1);
+          user.gainAction(1);
+        }
     },{
         number:9,
         name: {
@@ -3744,7 +3818,19 @@ var cardSource=[
           ja: 'このカードがプレイエリアに出ているかぎり、他のプレイヤーがアタックカードを使用しても、あなたはそのカードの影響を受けない。',
         },
         remark:'',
-        stage:''
+        stage:'',
+        use:async (user,that) => {
+            user.gainMoney(1);
+            user.gainAction(1);
+            user.duration.push(that);
+        },
+        duration:async (user,that) => {
+            user.gainMoney(1);
+        },
+        onAttack: (user,that,card)=>{
+            if(!that.used) return;
+            user.affect = false;
+        }
     },{
         number:12,
         name: {

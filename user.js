@@ -29,6 +29,7 @@ class User{
         this.cardAmount = props.cardAmount || 0;
         this.temp = props.temp || [];
         this.gained = props.gained || {supply:{},basic:{}};//src:{index:type}
+        this.extraTurn = props.extraTurn || false;//398
     }
 
     async gainCard(to, src, index, type, place = 'bottom'){
@@ -89,7 +90,7 @@ class User{
                 if(val <= 0) usedup += 1;
             });
               if(room.basicRemain[5] === 0 || usedup >= 3) {
-                endGame(this.socket.room);
+                room.endGame();
               return;
             }
         }
@@ -133,6 +134,7 @@ class User{
 
     drop(amount, from, to = 'drops', place = 'bottom'){
       console.log("in usr.drop");
+      console.log(amount,from,to,place);
         if(amount == 'all'){
             this[to] = this[to].concat(this[from]);
             this[from] = [];
@@ -153,6 +155,7 @@ class User{
         let data = {};
         data[from] = this[from];
         data[to] = this[to];
+        data.hand = this.hand;
         this.socket.emit("statusUpdate", data);
     }
 
@@ -186,14 +189,14 @@ class User{
               if(typeof(this[from][index].vp) !== "undefined"){
                 this.vp -= this[from][index].vp;
               }
-              if(card.onTrash !== undefined && !card.onTrash(this,exFunctions)) return;//mokou
+              if(card.onTrash !== undefined && !card.onTrash(this)) return;//mokou
               sendRep(this.socket,this,`${this.socket.username}废弃了${card.name.ch}`);
               delete this.onGain[card.id];
               delete this.onLost[card.id];
               for(let cardid in this.onLost){
                 let eff = this.onLost[cardid];
                 console.log(`in ${eff.from.name.ch} onLost`);
-                eff.func(this, exFunctions, eff.from, card);
+                eff.func(this, eff.from, card);
               }
               room.trash.push(this[from].splice(index, 1)[0]);
           });
@@ -226,12 +229,12 @@ class User{
       for(let cardid in this.duration){
         let card = this.duration[cardid];
         if(typeof(card.onAttack) !== 'function') continue;
-        await eff.func(this, exFunctions, card, from);
+        await card.onAttack(this, card, from);
       }
       for(let cardid in this.hand){
         let card = this.hand[cardid];
         if(typeof(card.onAttack) !== 'function') continue;
-        await card.onAttack(this, exFunctions, card, from);
+        await card.onAttack(this, card, from);
       }
       console.log("attack finished of " + this.socket.username);
     }

@@ -141,7 +141,7 @@ function ask(args){
                 data = data.slice(0, max);
               }
               resolve(data);
-              //data:{src,index}
+              //data:{src,index} 
             }
         });
     });
@@ -161,6 +161,7 @@ function generalStatus(socket, newTurn,fresh){
         nowAction: user.action,
         nowBuy: user.buy,
         nowVp: newTurn ? undefined : user.vp,
+        nowDuration: newTurn ? undefined : user.duration,
         drops: user.drops,
         aCardUsing: user.aCardUsing,
         hand: user.hand,
@@ -176,6 +177,7 @@ function generalStatus(socket, newTurn,fresh){
         nowMoney: user.money,
         nowCard: user.hand.length,
         nowVp: newTurn ? undefined : user.vp,
+        nowDuration: newTurn ? undefined : user.duration,
         nowAction: user.action,
         nowBuy: user.buy,
         nowTurn: parseInt(room.nowStage / (3 * Object.keys(room.users).length) + 1)
@@ -186,6 +188,8 @@ function generalStatus(socket, newTurn,fresh){
           supplyRemain: room.supplyRemain,
           basicRemain: room.basicRemain,
           myVp: user.vp,
+          nowDuration: user.duration,
+          nowStage: stage[room.nowStage % 3],
           drops: user.drops,
           aCardUsing: user.aCardUsing,
           hand: user.hand,
@@ -195,6 +199,8 @@ function generalStatus(socket, newTurn,fresh){
           supplyRemain: room.supplyRemain,
           basicRemain: room.basicRemain,
           otherVp: user.vp,
+          nowDuration: user.duration,
+          nowStage: stage[room.nowStage % 3],
           oneName: socket.username,
           nowTurn: parseInt(room.nowStage / (3 * Object.keys(room.users).length) + 1)
       });

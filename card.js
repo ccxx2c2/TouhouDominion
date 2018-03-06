@@ -31,6 +31,7 @@ class DomCard extends Card{
         this.onGain = props.onGain || undefined;
         this.onAttack = props.onAttack || undefined;
         this.onTrash = props.onTrash || undefined;
+        this.duration = props.duration || undefined;
     }
 }
 
