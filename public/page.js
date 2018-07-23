@@ -32,7 +32,12 @@ Array.prototype.remove = function(element) {
       return this.splice(index, 1)[0];
     }
 };
-
+ // from https://stackoverflow.com/questions/33355528/filtering-an-array-with-a-function-that-returns-a-promise/46842181#46842181
+ Array.prototype.asyncfilter = async function filter(callback) {
+    return (await Promise.all(this.map(async item => {
+         return (await callback(item)) ? item : undefined
+    }))).filter(i=>i!==undefined);
+}
 function changePlace(a,b,i){//在b中值为i的一项跑到最前
     a = a.concat(a.splice(0,b.indexOf(i)));
     return a;

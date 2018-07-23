@@ -26,6 +26,7 @@ class User{
         this.onGain = props.onGain || {};
         this.beforeGain = props.beforeGain || {};
         this.onLost = props.onLost || {};
+        this.onDrop = prpos.onDrop || {};
         this.cardAmount = props.cardAmount || 0;
         this.temp = props.temp || [];
         this.gained = props.gained || {supply:{},basic:{}};//src:{index:type}
@@ -82,14 +83,7 @@ class User{
         }
         // judge if game end
         if(room[src + "Remain"][index] === 0){
-            let usedup = 0;
-            room.basicRemain.forEach((val) => {
-                if(val <= 0) usedup += 1;
-            });
-            room.supplyRemain.forEach((val) => {
-                if(val <= 0) usedup += 1;
-            });
-              if(room.basicRemain[5] === 0 || usedup >= 3) {
+              if(room.basicRemain[5] === 0 || room.usedup() >= 3) {
                 room.endGame();
               return;
             }
@@ -110,7 +104,7 @@ class User{
 
     find(amount){
         console.log("in usr.find");
-        console.log(`amount:${amount} length:${this.deck.length}`);
+        console.log(`amount:${amount} length:${this.deck.length}`,this.hand.length);
         if(this.deck.length < amount){
             this.drops.shuffle();
             this.deck = this.deck.concat(this.drops);
@@ -120,12 +114,7 @@ class User{
     }
     draw(amount){
         console.log("in usr.draw");
-        console.log("amount:",amount,"length:",this.hand.length);
-        if(this.deck.length < amount){
-            this.drops.shuffle();
-            this.deck = this.deck.concat(this.drops);
-            this.drops = [];
-        }
+        this.find(amount);
         this.hand = this.hand.concat(this.deck.splice(0,amount));
         this.socket.emit("statusUpdate", {
               hand: this.hand,
@@ -208,20 +197,23 @@ class User{
         let room = rooms[this.room];
         console.log("in show card");
         console.log(from,this[from]);
+        let showCards = [];
         if(amount === 'all'){
-          await this[from].forEach(card =>{
-            card.shown = true;
-            sendRep(this.socket,this,`${this.socket.username}展示了${card.name.ch}`);
-          });
+          showCards = this[from];
         }
         if(Array.isArray(amount)){
-        await amount.forEach( index =>{
-              console.log(index, this[from][index].name.ch, this[from][index].no);
-              let card = this[from][index];
-              card.shown = true;
-              sendRep(this.socket,this,`${this.socket.username}展示了${card.name.ch}`);
+          showCards = amount.map(index => {
+            console.log(index, this[from][index].name.ch, this[from][index].no);
+            return this[from][index];
           });
         }
+        if(Number.isInteger(amount)){
+          showCards = this.find(amount);
+        }
+        await showCards.forEach(card => {
+          card.shown = true;
+          sendRep(this.socket,this,`${this.socket.username}展示了${card.name.ch}`);
+        });
     }
 
     async attacked(from){
@@ -237,6 +229,9 @@ class User{
         await card.onAttack(this, card, from);
       }
       console.log("attack finished of " + this.socket.username);
+    }
+    globalCard (){
+      return [].concat(this.hand,this.actionArea,this.drops,this.duration,this.temp);
     }
 }
 module.exports = User;

@@ -26,7 +26,12 @@ const ROOMAMOUNT = 3;
        return this.splice(index, 1)[0];
      }
  };
-
+ // from https://stackoverflow.com/questions/33355528/filtering-an-array-with-a-function-that-returns-a-promise/46842181#46842181
+Array.prototype.asyncfilter = async function filter(callback) {
+    return (await Promise.all(this.map(async item => {
+         return (await callback(item)) ? item : undefined
+    }))).filter(i=>i!==undefined);
+}
 function sleep(delay){
   return ()=>{
     return new Promise((resolve, reject) => {

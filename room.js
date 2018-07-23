@@ -185,7 +185,16 @@ class Room{
         }
     }
 
-
+    usedup(){
+        let usedup = 0;
+        this.basicRemain.forEach((val) => {
+            if(val <= 0) usedup += 1;
+        });
+        this.supplyRemain.forEach((val) => {
+            if(val <= 0) usedup += 1;
+        });
+        return usedup;
+    }
     endGame(){
         console.log(`${new Date().toLocaleString()} game in room#${this.no} ended`);
         for(let socket of this.sockets){

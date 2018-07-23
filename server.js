@@ -11,8 +11,8 @@ var credentials = {key: privateKey, cert: certificate};
 var https = require('https').createServer(credentials, app);
 
 var io = require('socket.io')(https);
-var sf = require(__dirname+'/socketFunc.js');
-var g = require(__dirname+'/global.js');
+var sf = require(__dirname + '/socketFunc.js');
+var g = require(__dirname + '/global.js');
 var pages = g.pages;
 
 http.listen(80, () => {

@@ -4,15 +4,18 @@
   "description": "an online board game",
   "main": "server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "mocha tests/"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "express": "^4.14.0",
-    "socket.io": "^2.0.4",
+    "Vue.js": "^2.3.4",
     "bootstrap": "^3.3.7",
+    "chai": "^4.1.2",
+    "express": "^4.14.0",
     "jQuery": "^1.12.4",
-    "Vue.js": "^2.3.4"
+    "mocha": "^5.2.0",
+    "mongodb": "^3.1.0",
+    "socket.io": "^2.0.4"
   }
 }

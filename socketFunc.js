@@ -212,9 +212,11 @@ async function nextStage(){
             card.duration(room.users[room.nowPlayer],card);
             np.socket.emit("statusUpdate",{
                 usingCard: card,
+                nowPlayer: room.nowPlayer,
               });
             np.socket.to(np.socket.room).emit("statusUpdate",{
                 usingCard: card,
+                nowPlayer: room.nowPlayer,
               });
         });
         room.users[room.nowPlayer].duration = [];
